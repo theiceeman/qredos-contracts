@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.0;
+pragma solidity 0.8.1;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
-contract Escrow is IERC721Receiver {
+abstract contract Escrow is IERC721Receiver {
 
   enum EscrowStatus {NFT_DEPOSITED, NFT_WITHDRAWN}
 
@@ -26,21 +26,17 @@ contract Escrow is IERC721Receiver {
     }
 
 
-    function deposit(uint256 tokenId, address tokenAddress) external onlyOwner returns(bool){
-       require(tokenAddress !== 0, "Escrow: address is zero address!");
-       require(
-        ERC721(tokenAddress).safeTransferFrom(msg.sender, address(this), tokenId),
-        "Escrow: Transfer failed!")
+    function deposit(uint256 _tokenId, address _tokenAddress) external onlyOwner returns(bool){
+       require(_tokenAddress != address(0x0), "Escrow: address is zero address!");
+        ERC721(_tokenAddress).safeTransferFrom(msg.sender, address(this), _tokenId);
        status = EscrowStatus.NFT_DEPOSITED;
        return true;
 
     }
 
-    function withdraw(address newNftOwnerAddress) external onlyOwner {
-       require(newNftOwnerAddress !== 0, "Escrow: address is zero address!");
-       require(
-        ERC721(tokenAddress).safeTransferFrom(address(this), newNftOwnerAddress, tokenId),
-        "Escrow: Transfer failed!")
+    function withdraw(address newNftOwnerAddress) external onlyOwner returns (bool){
+       require(newNftOwnerAddress != address(0x0), "Escrow: address is zero address!");
+        ERC721(tokenAddress).safeTransferFrom(address(this), newNftOwnerAddress, tokenId);
        status = EscrowStatus.NFT_WITHDRAWN;
        return true;
 
