@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.0;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.1;
 
 import "./interfaces/IWETH.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
