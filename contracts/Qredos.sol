@@ -2,43 +2,57 @@
 pragma solidity 0.8.1;
 
 import "./interfaces/IMarket.sol";
-import "./interfaces/ITellerV2.sol";
+import "./interfaces/IPoolRegistry.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721.sol":
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "./PoolRegistry.sol";
+import "./Escrow.sol";
 
-/* 
-Polygon
-    TellerV2: 0xD3D79A066F2cD471841C047D372F218252Dbf8Ed
-    MarketRegistry: 0xeF0f89baC623eD7C875bC2F23b5403DcF90ba8Bd
-Rinkeby: 
-    TellerV2: 0x21d3D541937de52ac5e4aF6254d0d2134d9B7c9e
-    MarketRegistry: 0xe2F925476d5A3b489d25efDbedE996E857974859
- */
 
-contract Qredos is Ownable {
-    IERC20 constant paymentToken;
+contract Qredos is Ownable, PoolRegistry {
+    using SafeERC20 for IERC20;
 
-    //  This will be set to Teller v2 initially. we can switch to our own pool in future.
-    address public lendingPoolAddress =
-        0x21d3D541937de52ac5e4aF6254d0d2134d9B7c9e;
-    ITellerV2 public lendingPool = ITellerV2(lendingPoolAddress);
+    IERC20 public paymentToken;
+    IPoolRegistry public lendingPool = IPoolRegistry(lendingPoolAddress);
 
-    uint256 public tellerMarketPlaceId = 0;
     uint32 public duration = 7776000; // APPROX. 90 days (3 months)
     uint32 public paymentCycle;
     uint16 public APR = 30; //  10% * 3 months
-    uint16 public downPaymentPercentage = 50;
+    uint16 public constant downPaymentPercentage = 50;   // borrowers will pay 50%
+
+    // (borrowerAddress => mapping(PurchaseId => [])
+    mapping(address => mapping(uint256 => PurchaseDetails)) public Purchase;
+    uint256 public totalPurchases = 0;
+    // (borrower => purchaseId)
+    mapping(uint256 => uint256) countPurchaseForBorrower;
 
     bool public isPaused;
 
-    event QredosContractDeployed();
+
+    enum PurchaseStatus {
+        OPEN,
+        COMPLETED,
+        FAILED
+    }
+
+    struct PurchaseDetails{
+        uint256 loanId;
+        address escrowAddress;
+        address tokenAddress;
+        uint256 tokenId;
+        PurchaseStatus;
+        bool isExists;
+    }
+
+
+    event QredosContractDeployed(address paymentTokenAddress,address lendingPoolAddress);
     event LendingPoolUpdated(address oldValue, address newValue);
     event DurationUpdated(uint32 oldValue, uint32 newValue);
     event PaymentCycleUpdated(uint32 oldValue, uint32 newValue);
     event APRUpdated(uint16 oldValue, uint16 newValue);
-    event TellerMarketPlaceIdUpdated(uint256 oldValue, uint256 newValue);
-    event LoanApproved(
+    event PurchaseCreated(
         address indexed userAddress,
         uint256 indexed tokenId,
         address indexed tokenAddress,
@@ -48,63 +62,84 @@ contract Qredos is Ownable {
         uint32 duration,
         uint16 downPaymentPercentage
     );
+    event PurchaseCompleted(uint256 indexed purchaseId);
 
     modifier whenNotPaused() {
         require(!isPaused, "Qredos: currently paused!");
         _;
     }
 
-    constructor(address _paymentTokenAddress) {
+    constructor(address _paymentTokenAddress, address _lendingPoolAddress) {
         paymentToken = IERC20(_paymentTokenAddress);
-        emit QredosContractDeployed();
+    lendingPool = IPoolRegistry(_lendingPoolAddress);
+        emit QredosContractDeployed(_paymentTokenAddress,_lendingPoolAddress);
     }
 
     /*
         make sure escrow is owned by oracle before transferring nft to it. 
     */
-    function buyNft(
+    function purchaseNFT(
         address tokenAddress,
         uint256 tokenId,
         uint256 downPaymentAmount,
-        uint256 amountToBeLoaned
+        uint256 principal,
+        uint256 poolId
     ) public whenNotPaused {
         require(
             tokenAddress != address(0x0),
-            "Escrow: address is zero address!"
+            "Qredos: address is zero address!"
         );
+        require(PoolRegistry(address(PoolRegistry)).Pools[poolId].isExists, "Qredos: Invalid pool!");
         require(
-            _calcDownPayment(downPaymentAmount, amountToBeLoaned),
+            _calcDownPayment(downPaymentAmount, principal),
             "Qredos: Invalid principal!"
         );
-        require(
-            paymentToken.safeTransferFrom(msg.sender, address(this), downPaymentAmount),
-            "Qredos: Transfer failed!"
-        );
+        require(lendingPool._getPoolBalance(poolId) > principal, "Qredos: Pool can't fund purchase!");
+        uint256 loanId = lendingPool.requestLoan(poolId);
+        require(paymentToken.balanceOf(address(this)) > (principal + downPaymentAmount), "Qredos: Qredos can't fund purchase!");
+            paymentToken.safeTransferFrom(msg.sender, address(this), downPaymentAmount);
 
-        lendingPool.submitBid(
-            address(paymentToken),
-            tellerMarketPlaceId,
-            amountToBeLoaned,
-            duration,
-            APR,
-            "https://ipfs.io/ipfs/QmbePdpATtZscRZcgFSaAsPuqKBsffWoYikqLxTbYkfrkW",
-            address(this)
-        );
         require(
             paymentToken.balanceOf(address(this)) <
-                (downPaymentAmount + amountToBeLoaned),
+                (downPaymentAmount + principal),
             "Qredos: Insufficient funds!"
         );
-        emit LoanApproved(
+        _createPurchase(msg.sender, loanId, address(0x0), tokenAddress, tokenId)
+
+        emit PurchaseCreated(
             msg.sender,
             tokenId,
             tokenAddress,
             downPaymentAmount,
-            amountToBeLoaned,
+            principal,
             APR,
             duration,
             downPaymentPercentage
         );
+    }
+
+    function _completeNFTPurchase(uint256 purchaseId, address borrowerAddress){
+        require(Purchase[borrowerAddress][poolId].isExists, "Qredos: Invalid purchase ID!");
+        PurchaseDetails purchase = Purchase[borrowerAddress][poolId];
+        require(ERC721(purchase.tokenAddress).ownerOf(purchase.tokenId) == address(this), "Qredos: Purchase Incomplete!");
+
+        // update to proxy pattern to make deployment cheaper
+        address escrowAddress =  address(new Escrow(borrowerAddress, purchase.tokenId,purchase.tokenAddress));
+         require(Escrow(escrowAddress).owner() == address(this), "Qredos: Invalid escrow owner!");
+        ERC721(purchase.tokenAddress).safeTransferFrom(address(this), escrowAddress, purchase.tokenId);
+        _updatePurchase(
+        borrowerAddress,
+        purchaseId,
+            purchase.loanId,
+            purchase.escrowAddress,
+            purchase.tokenAddress,
+            purchase.tokenId,
+            PurchaseStatus.COMPLETED,
+            true
+    )
+        emit PurchaseCompleted(purchaseId)
+
+
     }
 
     function claimNft() public {}
@@ -161,18 +196,6 @@ contract Qredos is Ownable {
         emit PaymentCycleUpdated(old, _paymentCycle);
     }
 
-    function setTellerMarketPlaceId(uint256 _tellerMarketPlaceId)
-        external
-        onlyOwner
-    {
-        require(
-            _tellerMarketPlaceId != 0,
-            "Qredos: marketplace ID can't be zero"
-        );
-        uint256 old = tellerMarketPlaceId;
-        tellerMarketPlaceId = _tellerMarketPlaceId;
-        emit TellerMarketPlaceIdUpdated(old, _tellerMarketPlaceId);
-    }
 
     function forwardAllFunds() external onlyOwner {
         paymentToken.transfer(owner(), paymentToken.balanceOf(address(this)));
@@ -181,6 +204,49 @@ contract Qredos is Ownable {
     /////////////////////////
     ///   Internal   ////////
     /////////////////////////
+
+
+    function _createPurchase(uint256 borrowerAddress, uint256 loanId,
+        address escrowAddress,
+        address tokenAddress,
+        uint256 tokenId)
+        internal
+        returns (uint256)
+    {
+        uint256 purchases = totalPurchases;
+        Purchase[borrowerAddress][purchases++] = PurchaseDetails(
+            loanId,
+            escrowAddress,
+            tokenAddress,
+            tokenId,
+            PurchaseStatus.OPEN,
+            true
+        );
+        ++totalPurchases;
+        countPurchaseForBorrower[borrowerAddress] = countPurchaseForBorrower[
+            borrowerAddress
+        ]++;
+        return purchases++;
+    }
+    function _updatePurchase(
+        address borrowerAddress,
+        uint256 purchaseId,
+            uint256 loanId,
+            address escrowAddress,
+            address tokenAddress,
+            uint256 tokenId,
+            PurchaseStatus status,
+            bool true
+    ) internal {
+        Purchase[borrowerAddress][purchaseId] = PurchaseDetails(
+            loanId,
+            escrowAddress,
+            tokenAddress,
+            tokenId,
+           status,
+            true
+        );
+    }
 
     function _calcDownPayment(uint256 downPayment, uint256 principal)
         internal

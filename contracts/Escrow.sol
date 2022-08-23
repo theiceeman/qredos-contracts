@@ -41,6 +41,12 @@ abstract contract Escrow is IERC721Receiver {
        return true;
 
     }
+    /**
+     * @dev Returns the address of the current owner.
+     */
+    function owner() public view returns (address) {
+        return owner;
+    }
 
 
     modifier onlyOwner() {
