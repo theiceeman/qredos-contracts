@@ -34,7 +34,7 @@ abstract contract Escrow is IERC721Receiver {
 
     }
 
-    function withdraw(address newNftOwnerAddress) external onlyOwner returns (bool){
+    function claim(address newNftOwnerAddress) external onlyOwner returns (bool){
        require(newNftOwnerAddress != address(0x0), "Escrow: address is zero address!");
         ERC721(tokenAddress).safeTransferFrom(address(this), newNftOwnerAddress, tokenId);
        status = EscrowStatus.NFT_WITHDRAWN;

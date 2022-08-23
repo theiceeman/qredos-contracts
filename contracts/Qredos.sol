@@ -2,8 +2,8 @@
 pragma solidity 0.8.1;
 
 import "./interfaces/IMarket.sol";
-import "./interfaces/IWETH.sol";
 import "./interfaces/ITellerV2.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
@@ -17,7 +17,7 @@ Rinkeby:
  */
 
 contract Qredos is Ownable {
-    IWETH constant WETH = IWETH(0xc778417E063141139Fce010982780140Aa0cD5Ab);
+    IERC20 constant paymentToken;
 
     //  This will be set to Teller v2 initially. we can switch to our own pool in future.
     address public lendingPoolAddress =
@@ -54,7 +54,8 @@ contract Qredos is Ownable {
         _;
     }
 
-    constructor() {
+    constructor(address _paymentTokenAddress) {
+        paymentToken = IERC20(_paymentTokenAddress);
         emit QredosContractDeployed();
     }
 
@@ -76,12 +77,12 @@ contract Qredos is Ownable {
             "Qredos: Invalid principal!"
         );
         require(
-            WETH.transferFrom(msg.sender, address(this), downPaymentAmount),
+            paymentToken.safeTransferFrom(msg.sender, address(this), downPaymentAmount),
             "Qredos: Transfer failed!"
         );
 
         lendingPool.submitBid(
-            address(WETH),
+            address(paymentToken),
             tellerMarketPlaceId,
             amountToBeLoaned,
             duration,
@@ -90,7 +91,7 @@ contract Qredos is Ownable {
             address(this)
         );
         require(
-            WETH.balanceOf(address(this)) <
+            paymentToken.balanceOf(address(this)) <
                 (downPaymentAmount + amountToBeLoaned),
             "Qredos: Insufficient funds!"
         );
@@ -174,7 +175,7 @@ contract Qredos is Ownable {
     }
 
     function forwardAllFunds() external onlyOwner {
-        WETH.transfer(owner(), WETH.balanceOf(address(this)));
+        paymentToken.transfer(owner(), paymentToken.balanceOf(address(this)));
     }
 
     /////////////////////////
