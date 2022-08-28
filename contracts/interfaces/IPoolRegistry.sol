@@ -32,5 +32,5 @@ interface IPoolRegistry {
         uint256 poolId
     ) external;
     function fundPool(uint256 poolId, uint256 amount) external;
-    function closePool(uint256 poolId, address reciever);
+    function closePool(uint256 poolId, address reciever) external;
 }

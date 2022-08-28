@@ -4,9 +4,11 @@ pragma solidity 0.8.1;
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
-abstract contract Escrow is IERC721Receiver {
-
-  enum EscrowStatus {NFT_DEPOSITED, NFT_WITHDRAWN}
+contract Escrow is IERC721Receiver {
+    enum EscrowStatus {
+        NFT_DEPOSITED,
+        NFT_WITHDRAWN
+    }
 
     address public owner;
     address public immutable borrowerAddress;
@@ -25,29 +27,50 @@ abstract contract Escrow is IERC721Receiver {
         tokenAddress = _tokenAddress;
     }
 
-
-    function deposit(uint256 _tokenId, address _tokenAddress) external onlyOwner returns(bool){
-       require(_tokenAddress != address(0x0), "Escrow: address is zero address!");
-        ERC721(_tokenAddress).safeTransferFrom(msg.sender, address(this), _tokenId);
-       status = EscrowStatus.NFT_DEPOSITED;
-       return true;
-
+    function onERC721Received(
+        address,
+        address,
+        uint256,
+        bytes calldata
+    ) public pure override returns (bytes4) {
+        return IERC721Receiver.onERC721Received.selector;
     }
 
-    function claim(address newNftOwnerAddress) external onlyOwner returns (bool){
-       require(newNftOwnerAddress != address(0x0), "Escrow: address is zero address!");
-        ERC721(tokenAddress).safeTransferFrom(address(this), newNftOwnerAddress, tokenId);
-       status = EscrowStatus.NFT_WITHDRAWN;
-       return true;
-
+    function deposit(uint256 _tokenId, address _tokenAddress)
+        external
+        onlyOwner
+        returns (bool)
+    {
+        require(
+            _tokenAddress != address(0x0),
+            "Escrow: address is zero address!"
+        );
+        ERC721(_tokenAddress).safeTransferFrom(
+            msg.sender,
+            address(this),
+            _tokenId
+        );
+        status = EscrowStatus.NFT_DEPOSITED;
+        return true;
     }
-    /**
-     * @dev Returns the address of the current owner.
-     */
-    function owner() public view returns (address) {
-        return owner;
-    }
 
+    function claim(address newNftOwnerAddress)
+        external
+        onlyOwner
+        returns (bool)
+    {
+        require(
+            newNftOwnerAddress != address(0x0),
+            "Escrow: address is zero address!"
+        );
+        ERC721(tokenAddress).safeTransferFrom(
+            address(this),
+            newNftOwnerAddress,
+            tokenId
+        );
+        status = EscrowStatus.NFT_WITHDRAWN;
+        return true;
+    }
 
     modifier onlyOwner() {
         require(msg.sender == owner, "Ownable: caller is not owner");

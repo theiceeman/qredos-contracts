@@ -1,78 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.1;
+import "./models/Schema.sol";
+import "./models/Events.sol";
+
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-contract PoolRegistry is Ownable {
+import "./store/PoolRegistryStore.sol";
+
+contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
     using SafeERC20 for IERC20;
-
-    IERC20 private lendingToken;
-    mapping(uint256 => PoolDetails) public Pools;
-    uint256 public totalPools = 0;
-    // (poolId => mapping(loanId => [])
-    mapping(uint256 => mapping(uint256 => LoanDetails)) public Loans;
-    uint256 public totalLoans = 0;
-    // (pool => noOfLoans)
-    mapping(uint256 => uint256) countLoansInPool;
-    // (loanId => mapping(loanRepaymentiD => [])
-    mapping(uint256 => mapping(uint256 => LoanRepaymentDetails))
-        public LoanRepayment;
-    uint256 public totalLoanRepayments = 0;
-    // (loanId => noOfLoanRepayments)
-    mapping(uint256 => uint256) countLoanRepaymentsForLoan;
-
-    enum PoolStatus {
-        OPEN,
-        CLOSED
-    }
-    enum LoanStatus {
-        OPEN,
-        CLOSED
-    }
-    enum LoanRepaymentType {
-        FULL,
-        MINIMUM
-    }
-
-    struct PoolDetails {
-        uint256 amount;
-        uint16 paymentCycle;
-        uint16 APR;
-        uint256 durationInSecs;
-        uint16 durationInMonths;
-        address creator;
-        PoolStatus status; //  OPEN | CLOSED
-        bool isExists;
-    }
-    struct LoanDetails {
-        uint256 poolId;
-        address borrower;
-        uint256 principal;
-        LoanStatus status; //  OPEN | CLOSED
-        bool isExists;
-    }
-    struct LoanRepaymentDetails {
-        uint256 loanId;
-        uint256 amount;
-        bool isExists;
-    }
-
-    event PoolRegistryContractDeployed();
-    event PoolCreated(uint256 indexed poolId, address indexed creator);
-    event LoanCreated(
-        uint256 indexed loanId,
-        address indexed borrower,
-        uint256 principal
-    );
-    event LoanRepaid(
-        uint256 indexed loanRepaymentId,
-        uint256 indexed loanId,
-        uint256 amount,
-        LoanRepaymentType
-    );
-    event PoolFunded(uint256 indexed poolId, uint256 amount);
-    event PoolClosed(uint256 indexed poolId, uint256 amountWithdrawn);
 
     constructor(address _lendingTokenAddress) {
         lendingToken = IERC20(_lendingTokenAddress);
@@ -132,7 +70,7 @@ contract PoolRegistry is Ownable {
         uint256 principal,
         uint256 poolId,
         address borrower
-    ) external onlyOwner returns(uint256){
+    ) external onlyOwner returns (uint256) {
         require(Pools[poolId].isExists, "Pool.requestLoan: Invalid pool Id!");
         require(
             Pools[poolId].status == PoolStatus.OPEN,
@@ -187,9 +125,7 @@ contract PoolRegistry is Ownable {
         require(amount > 0, "Pool.repayLoanPart: Invalid input!");
         // amount should equal percentage scheduled for one payment cycle
         require(
-            amount ==
-                Loans[poolId][loanId].principal /
-                    Pools[Loans[poolId][loanId].principal].paymentCycle,
+            amount == _calcLoanPartPayment(loanId, poolId),
             "Pool.repayLoanPart: Invalid amount!"
         );
         lendingToken.safeTransferFrom(msg.sender, address(this), amount);
@@ -201,7 +137,7 @@ contract PoolRegistry is Ownable {
             loanRepaymentId,
             loanId,
             amount,
-            LoanRepaymentType.MINIMUM
+            LoanRepaymentType.PART
         );
     }
 
@@ -249,120 +185,6 @@ contract PoolRegistry is Ownable {
 
     // INTERNAL FUNCTIONS
 
-    // POOL
-    function _createPool(
-        uint256 _amount,
-        uint16 _paymentCycle,
-        uint16 _APR,
-        uint256 _durationInSecs,
-        uint16 _durationInMonths,
-        address _creator
-    ) internal returns (uint256) {
-        uint256 poolId = totalPools;
-        Pools[poolId++] = PoolDetails(
-            _amount,
-            _paymentCycle,
-            _APR,
-            _durationInSecs,
-            _durationInMonths,
-            _creator,
-            PoolStatus.OPEN,
-            true
-        );
-        ++totalPools;
-        return poolId++;
-    }
-
-    function _updatePool(
-        uint256 poolId,
-        uint256 _amount,
-        uint16 _paymentCycle,
-        uint16 _APR,
-        uint256 _durationInSecs,
-        uint16 _durationInMonths,
-        address _creator,
-        PoolStatus status
-    ) internal {
-        Pools[poolId] = PoolDetails(
-            _amount,
-            _paymentCycle,
-            _APR,
-            _durationInSecs,
-            _durationInMonths,
-            _creator,
-            status,
-            true
-        );
-    }
-
-    function _isOpenLoansInPool(uint256 poolId) internal view returns (bool) {
-        for (uint256 i = 0; i < countLoansInPool[poolId]; i++) {
-            if (
-                Loans[poolId][i].poolId == poolId &&
-                Loans[poolId][i].status == LoanStatus.OPEN
-            ) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    // LOAN
-    function _createLoan(
-        uint256 poolId,
-        address borrowerAddress,
-        uint256 principal
-    ) internal returns (uint256) {
-        uint256 loanId = totalLoans;
-        Loans[poolId][loanId++] = LoanDetails(
-            poolId,
-            borrowerAddress,
-            principal,
-            LoanStatus.OPEN,
-            true
-        );
-        ++totalLoans;
-        countLoansInPool[poolId] = countLoansInPool[poolId]++;
-        return loanId++;
-    }
-
-    function _createLoanRepayment(uint256 loanId, uint256 amount)
-        internal
-        returns (uint256)
-    {
-        uint256 loanRepayment = totalLoanRepayments;
-        LoanRepayment[loanId][loanRepayment++] = LoanRepaymentDetails(
-            loanId,
-            amount,
-            true
-        );
-        ++totalLoanRepayments;
-        countLoanRepaymentsForLoan[loanId] = countLoanRepaymentsForLoan[
-            loanId
-        ]++;
-        return loanRepayment++;
-    }
-
-    function _hasPendingLoanRepayment(uint256 poolId)
-        internal
-        view
-        returns (bool)
-    {
-        require(Pools[poolId].isExists, "Pool: Invalid pool Id!");
-        // loan [i] - loanId
-        for (uint256 i = 0; i < countLoansInPool[poolId]; i++) {
-            uint256 totalAmountRepaid;
-            // loan repayments [j] - loanRepaymentID
-            for (uint256 j = 0; j < countLoanRepaymentsForLoan[i]; j++) {
-                totalAmountRepaid += LoanRepayment[i][j].amount;
-                if (totalAmountRepaid < Loans[poolId][i].principal) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
     // (pool balance - total lent out) + total repaid
     // This can be used to check exact amount pool creator can currently withdraw
     function _getPoolBalanceWithInterest(uint256 poolId)
@@ -389,5 +211,15 @@ contract PoolRegistry is Ownable {
             totalAmountLoaned += Loans[poolId][i].principal;
         }
         return (Pools[poolId].amount - totalAmountLoaned);
+    }
+
+    function _calcLoanPartPayment(uint256 loanId, uint256 poolId)
+        public
+        view
+        returns (uint256)
+    {
+        return
+            Loans[poolId][loanId].principal /
+            Pools[Loans[poolId][loanId].principal].paymentCycle;
     }
 }
