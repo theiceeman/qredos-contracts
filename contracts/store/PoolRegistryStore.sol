@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.1;
+import "../models/Schema.sol";
+
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "../models/Schema.sol";
 
 contract PoolRegistryStore is Schema {
     using SafeERC20 for IERC20;
@@ -17,7 +18,7 @@ contract PoolRegistryStore is Schema {
     uint256 public totalLoans = 0;
     /// @notice (pool => noOfLoans)
     mapping(uint256 => uint256) public countLoansInPool;
-    
+
     /// @notice (loanId => mapping(loanRepaymentiD => [])
     mapping(uint256 => mapping(uint256 => LoanRepaymentDetails))
         public LoanRepayment;
@@ -120,7 +121,7 @@ contract PoolRegistryStore is Schema {
         return loanId++;
     }
 
-    function _createLoanRepayment(uint256 loanId, uint256 amount)
+    function _createLoanRepayment(uint256 loanId, uint256 amount, LoanRepaymentType repaymentType)
         internal
         returns (uint256)
     {
@@ -128,6 +129,7 @@ contract PoolRegistryStore is Schema {
         LoanRepayment[loanId][loanRepayment++] = LoanRepaymentDetails(
             loanId,
             amount,
+            repaymentType,
             true
         );
         ++totalLoanRepayments;
@@ -143,10 +145,10 @@ contract PoolRegistryStore is Schema {
         returns (bool)
     {
         require(Pools[poolId].isExists, "Pool: Invalid pool Id!");
-        // loan [i] - loanId
+        // loan [i] -> loanId
         for (uint256 i = 0; i < countLoansInPool[poolId]; i++) {
             uint256 totalAmountRepaid;
-            // loan repayments [j] - loanRepaymentID
+            // loan repayments [j] -> loanRepaymentID
             for (uint256 j = 0; j < countLoanRepaymentsForLoan[i]; j++) {
                 totalAmountRepaid += LoanRepayment[i][j].amount;
                 if (totalAmountRepaid < Loans[poolId][i].principal) {

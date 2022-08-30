@@ -22,7 +22,6 @@ abstract contract Qredos is Ownable, Schema, PoolRegistry {
     address public poolRegistryStoreAddress;
 
     uint32 public duration = 7776000; // APPROX. 90 days (3 months)
-    uint32 public paymentCycle;
     uint16 public APR = 30; //  10% * 3 months
     uint16 public constant downPaymentPercentage = 50; // borrowers will pay 50%
 
@@ -32,6 +31,9 @@ abstract contract Qredos is Ownable, Schema, PoolRegistry {
     // (borrower => purchaseId)
     mapping(address => uint256) countPurchaseForBorrower;
 
+    mapping(uint256 => LiquidationDetails) public Liquidation;
+    uint256 public countLiquidation = 0;
+
     bool public isPaused;
 
     enum PurchaseStatus {
@@ -39,13 +41,25 @@ abstract contract Qredos is Ownable, Schema, PoolRegistry {
         COMPLETED,
         FAILED
     }
+    enum LiquidationStatus {
+        OPEN,
+        COMPLETED
+    }
 
     struct PurchaseDetails {
         uint256 loanId;
+        uint256 poolId;
         address escrowAddress;
         address tokenAddress;
         uint256 tokenId;
         PurchaseStatus status;
+        bool isExists;
+    }
+
+    struct LiquidationDetails {
+        uint256 purchaseId;
+        uint256 amount;
+        LiquidationStatus status;
         bool isExists;
     }
 
@@ -56,11 +70,11 @@ abstract contract Qredos is Ownable, Schema, PoolRegistry {
     );
     event LendingPoolUpdated(address oldValue, address newValue);
     event DurationUpdated(uint32 oldValue, uint32 newValue);
-    event PaymentCycleUpdated(uint32 oldValue, uint32 newValue);
     event APRUpdated(uint16 oldValue, uint16 newValue);
     event PurchaseCreated(
         address indexed userAddress,
         uint256 indexed poolId,
+        uint256 loanId,
         uint256 indexed purchaseId,
         uint256 tokenId,
         address tokenAddress,
@@ -145,6 +159,7 @@ abstract contract Qredos is Ownable, Schema, PoolRegistry {
         uint256 purchaseId = _createPurchase(
             msg.sender,
             loanId,
+            poolId,
             address(0x0),
             tokenAddress,
             tokenId
@@ -153,6 +168,7 @@ abstract contract Qredos is Ownable, Schema, PoolRegistry {
         emit PurchaseCreated(
             msg.sender,
             poolId,
+            loanId,
             purchaseId,
             tokenId,
             tokenAddress,
@@ -193,6 +209,7 @@ abstract contract Qredos is Ownable, Schema, PoolRegistry {
             borrowerAddress,
             purchaseId,
             purchase.loanId,
+            purchase.poolId,
             purchase.escrowAddress,
             purchase.tokenAddress,
             purchase.tokenId,
@@ -259,7 +276,23 @@ abstract contract Qredos is Ownable, Schema, PoolRegistry {
         emit NFTClaimed(purchaseId, msg.sender);
     }
 
-    function liquidateNft() public {}
+    function startLiquidation(uint256 purchaseId, uint256 discountAmount)
+        public
+        onlyOwner
+    {
+        require(
+            Purchase[msg.sender][purchaseId].isExists,
+            "Qredos: Invalid purchase ID!"
+        );
+        PurchaseDetails memory purchase = Purchase[msg.sender][purchaseId];
+        require(
+            PoolRegistry(lendingPoolAddress)._isLoanInDefault(
+                purchase.loanId,
+                purchase.poolId
+            ) != false,
+            "Qredos.startLiquidation: purchase is not defaulted!"
+        );
+    }
 
     /////////////////////////
     ///   Admin Actions   ///
@@ -289,13 +322,6 @@ abstract contract Qredos is Ownable, Schema, PoolRegistry {
         emit APRUpdated(old, _APR);
     }
 
-    function setPaymentCycle(uint32 _paymentCycle) external onlyOwner {
-        require(_paymentCycle != 0, "Qredos: payment cycle can't be zero");
-        uint32 old = paymentCycle;
-        paymentCycle = _paymentCycle;
-        emit PaymentCycleUpdated(old, _paymentCycle);
-    }
-
     function forwardAllFunds() external onlyOwner {
         IERC20(paymentTokenAddress).transfer(
             owner(),
@@ -310,6 +336,7 @@ abstract contract Qredos is Ownable, Schema, PoolRegistry {
     function _createPurchase(
         address borrowerAddress,
         uint256 loanId,
+        uint256 poolId,
         address escrowAddress,
         address tokenAddress,
         uint256 tokenId
@@ -317,6 +344,7 @@ abstract contract Qredos is Ownable, Schema, PoolRegistry {
         uint256 purchases = totalPurchases;
         Purchase[borrowerAddress][purchases++] = PurchaseDetails(
             loanId,
+            poolId,
             escrowAddress,
             tokenAddress,
             tokenId,
@@ -334,6 +362,7 @@ abstract contract Qredos is Ownable, Schema, PoolRegistry {
         address borrowerAddress,
         uint256 purchaseId,
         uint256 loanId,
+        uint256 poolId,
         address escrowAddress,
         address tokenAddress,
         uint256 tokenId,
@@ -341,12 +370,28 @@ abstract contract Qredos is Ownable, Schema, PoolRegistry {
     ) internal {
         Purchase[borrowerAddress][purchaseId] = PurchaseDetails(
             loanId,
+            poolId,
             escrowAddress,
             tokenAddress,
             tokenId,
             status,
             true
         );
+    }
+
+    function _createLiquidation(uint256 purchaseId, uint256 amount)
+        internal
+        returns (uint256)
+    {
+        uint256 liquidations = countLiquidation;
+        Liquidation[liquidations++] = LiquidationDetails(
+            purchaseId,
+            amount,
+            LiquidationStatus.OPEN,
+            true
+        );
+        ++countLiquidation;
+        return liquidations++;
     }
 
     function _calcDownPayment(uint256 downPayment, uint256 principal)
@@ -361,6 +406,4 @@ abstract contract Qredos is Ownable, Schema, PoolRegistry {
             return false;
         }
     }
-
-    function _loanRequestId() internal {}
 }

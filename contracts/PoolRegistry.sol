@@ -103,7 +103,11 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
             "Pool.repayLoanFull: Invalid amount!"
         );
         lendingToken.safeTransferFrom(msg.sender, address(this), amount);
-        uint256 loanRepaymentId = _createLoanRepayment(loanId, amount);
+        uint256 loanRepaymentId = _createLoanRepayment(
+            loanId,
+            amount,
+            LoanRepaymentType.FULL
+        );
         Loans[poolId][loanId].status = LoanStatus.CLOSED;
         emit LoanRepaid(
             loanRepaymentId,
@@ -132,7 +136,11 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
         /*
             check and set loan status to closed
         */
-        uint256 loanRepaymentId = _createLoanRepayment(loanId, amount);
+        uint256 loanRepaymentId = _createLoanRepayment(
+            loanId,
+            amount,
+            LoanRepaymentType.PART
+        );
         emit LoanRepaid(
             loanRepaymentId,
             loanId,
@@ -218,8 +226,37 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
         view
         returns (uint256)
     {
-        return
-            Loans[poolId][loanId].principal /
-            Pools[Loans[poolId][loanId].principal].paymentCycle;
+        return Loans[poolId][loanId].principal / Pools[poolId].paymentCycle;
+    }
+
+    function _isLoanInDefault(uint256 loanId, uint256 poolId)
+        public
+        view
+        returns (bool)
+    {
+        require(
+            Loans[poolId][loanId].isExists,
+            "Pool._isLoanInDefault: Invalid loan Id!"
+        );
+        require(
+            LoanRepayment[loanId][0].isExists,
+            "Pool._isLoanInDefault: No repayments!"
+        );
+        if (LoanRepayment[loanId][0].RepaymentType == LoanRepaymentType.FULL) {
+            return false;
+        }
+        uint256 poolPaymentCycle = Pools[poolId].paymentCycle;
+        uint256 countPartPayment;
+        for (uint256 i = 0; i <= poolPaymentCycle; i++) {
+            if (LoanRepayment[loanId][i].isExists) {
+                countPartPayment++;
+            } else {
+                return true;
+            }
+        }
+        if (poolPaymentCycle == countPartPayment) {
+            return false;
+        }
+        return true;
     }
 }

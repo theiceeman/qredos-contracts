@@ -36,6 +36,7 @@ struct LoanDetails {
 struct LoanRepaymentDetails {
     uint256 loanId;
     uint256 amount;
+    LoanRepaymentType RepaymentType;
     bool isExists;
 }
 }
