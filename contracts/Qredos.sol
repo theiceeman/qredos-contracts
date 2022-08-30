@@ -25,67 +25,16 @@ abstract contract Qredos is Ownable, Schema, PoolRegistry {
     uint16 public APR = 30; //  10% * 3 months
     uint16 public constant downPaymentPercentage = 50; // borrowers will pay 50%
 
-    // (borrowerAddress => mapping(PurchaseId => [])
+    // (borrowerAddress => PurchaseId[] => Details)
     mapping(address => mapping(uint256 => PurchaseDetails)) public Purchase;
     uint256 public totalPurchases = 0;
     // (borrower => purchaseId)
     mapping(address => uint256) countPurchaseForBorrower;
-
+    // (id => Details)
     mapping(uint256 => LiquidationDetails) public Liquidation;
     uint256 public countLiquidation = 0;
 
     bool public isPaused;
-
-    enum PurchaseStatus {
-        OPEN,
-        COMPLETED,
-        FAILED
-    }
-    enum LiquidationStatus {
-        OPEN,
-        COMPLETED
-    }
-
-    struct PurchaseDetails {
-        uint256 loanId;
-        uint256 poolId;
-        address escrowAddress;
-        address tokenAddress;
-        uint256 tokenId;
-        PurchaseStatus status;
-        bool isExists;
-    }
-
-    struct LiquidationDetails {
-        uint256 purchaseId;
-        uint256 amount;
-        LiquidationStatus status;
-        bool isExists;
-    }
-
-    event QredosContractDeployed(
-        address paymentTokenAddress,
-        address lendingPoolAddress,
-        address poolRegistryStoreAddress
-    );
-    event LendingPoolUpdated(address oldValue, address newValue);
-    event DurationUpdated(uint32 oldValue, uint32 newValue);
-    event APRUpdated(uint16 oldValue, uint16 newValue);
-    event PurchaseCreated(
-        address indexed userAddress,
-        uint256 indexed poolId,
-        uint256 loanId,
-        uint256 indexed purchaseId,
-        uint256 tokenId,
-        address tokenAddress,
-        uint256 downPayment,
-        uint256 principal,
-        uint256 apr,
-        uint32 duration,
-        uint16 downPaymentPercentage
-    );
-    event PurchaseCompleted(uint256 indexed purchaseId);
-    event NFTClaimed(uint256 indexed purchaseId, address claimer);
 
     modifier whenNotPaused() {
         require(!isPaused, "Qredos: currently paused!");
@@ -116,7 +65,7 @@ abstract contract Qredos is Ownable, Schema, PoolRegistry {
         uint256 downPaymentAmount,
         uint256 principal,
         uint256 poolId
-    ) public whenNotPaused {
+    ) external whenNotPaused {
         require(
             tokenAddress != address(0x0),
             "Qredos: address is zero address!"
@@ -181,7 +130,7 @@ abstract contract Qredos is Ownable, Schema, PoolRegistry {
     }
 
     function _completeNFTPurchase(uint256 purchaseId, address borrowerAddress)
-        public
+        external whenNotPaused
     {
         require(
             Purchase[borrowerAddress][purchaseId].isExists,
@@ -222,7 +171,7 @@ abstract contract Qredos is Ownable, Schema, PoolRegistry {
         uint256 purchaseId,
         LoanRepaymentType repaymentType,
         uint256 poolId
-    ) external returns (bool) {
+    ) external whenNotPaused returns (bool) {
         require(
             Purchase[msg.sender][purchaseId].isExists,
             "Qredos: Invalid purchase ID!"
@@ -257,7 +206,7 @@ abstract contract Qredos is Ownable, Schema, PoolRegistry {
         return true;
     }
 
-    function claimNft(uint256 purchaseId, uint256 poolId) public {
+    function claimNft(uint256 purchaseId, uint256 poolId) external whenNotPaused {
         require(
             Purchase[msg.sender][purchaseId].isExists,
             "Qredos: Invalid purchase ID!"
@@ -277,7 +226,7 @@ abstract contract Qredos is Ownable, Schema, PoolRegistry {
     }
 
     function startLiquidation(uint256 purchaseId, uint256 discountAmount)
-        public
+        external
         onlyOwner
     {
         require(
@@ -291,6 +240,39 @@ abstract contract Qredos is Ownable, Schema, PoolRegistry {
                 purchase.poolId
             ) != false,
             "Qredos.startLiquidation: purchase is not defaulted!"
+        );
+        uint256 liquidationId = _createLiquidation(purchaseId, discountAmount);
+        emit StartLiquidation(purchaseId, discountAmount, liquidationId);
+    }
+
+    function completeLiquidation(uint256 liquidationId) external {
+        require(
+            Liquidation[liquidationId].isExists,
+            "Qredos: Invalid liquidation ID!"
+        );
+        LiquidationDetails memory liquidation = Liquidation[liquidationId];
+        PurchaseDetails memory purchase = Purchase[msg.sender][
+            liquidation.purchaseId
+        ];
+        lendingToken.safeTransferFrom(
+            msg.sender,
+            address(this),
+            liquidation.discountAmount
+        );
+        require(
+            Escrow(purchase.escrowAddress).claim(msg.sender),
+            "Qredos: liquidation reverted!"
+        );
+        _updateLiquidation(
+            liquidation.purchaseId,
+            liquidation.discountAmount,
+            liquidationId,
+            LiquidationStatus.COMPLETED
+        );
+        emit CompleteLiquidation(
+            liquidation.purchaseId,
+            liquidationId,
+            msg.sender
         );
     }
 
@@ -379,19 +361,33 @@ abstract contract Qredos is Ownable, Schema, PoolRegistry {
         );
     }
 
-    function _createLiquidation(uint256 purchaseId, uint256 amount)
+    function _createLiquidation(uint256 purchaseId, uint256 discountAmount)
         internal
         returns (uint256)
     {
         uint256 liquidations = countLiquidation;
         Liquidation[liquidations++] = LiquidationDetails(
             purchaseId,
-            amount,
+            discountAmount,
             LiquidationStatus.OPEN,
             true
         );
         ++countLiquidation;
         return liquidations++;
+    }
+
+    function _updateLiquidation(
+        uint256 purchaseId,
+        uint256 discountAmount,
+        uint256 liquidationId,
+        LiquidationStatus status
+    ) internal {
+        Liquidation[liquidationId] = LiquidationDetails(
+            purchaseId,
+            discountAmount,
+            status,
+            true
+        );
     }
 
     function _calcDownPayment(uint256 downPayment, uint256 principal)

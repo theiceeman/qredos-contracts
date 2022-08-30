@@ -13,17 +13,17 @@ contract PoolRegistryStore is Schema {
     mapping(uint256 => PoolDetails) public Pools;
     uint256 public totalPools = 0;
 
-    /// @notice (poolId => mapping(loanId => [])
+    // (poolId => loanId[] => Details)
     mapping(uint256 => mapping(uint256 => LoanDetails)) public Loans;
     uint256 public totalLoans = 0;
-    /// @notice (pool => noOfLoans)
+    // (pool => noOfLoans)
     mapping(uint256 => uint256) public countLoansInPool;
 
-    /// @notice (loanId => mapping(loanRepaymentiD => [])
+    // (loanId => loanRepaymentiD[] => Details)
     mapping(uint256 => mapping(uint256 => LoanRepaymentDetails))
         public LoanRepayment;
     uint256 public totalLoanRepayments = 0;
-    /// @notice (loanId => noOfLoanRepayments)
+    // (loanId => noOfLoanRepayments)
     mapping(uint256 => uint256) public countLoanRepaymentsForLoan;
 
     function getLoanByPoolID(uint256 poolId, uint256 loanId)
@@ -121,10 +121,11 @@ contract PoolRegistryStore is Schema {
         return loanId++;
     }
 
-    function _createLoanRepayment(uint256 loanId, uint256 amount, LoanRepaymentType repaymentType)
-        internal
-        returns (uint256)
-    {
+    function _createLoanRepayment(
+        uint256 loanId,
+        uint256 amount,
+        LoanRepaymentType repaymentType
+    ) internal returns (uint256) {
         uint256 loanRepayment = totalLoanRepayments;
         LoanRepayment[loanId][loanRepayment++] = LoanRepaymentDetails(
             loanId,

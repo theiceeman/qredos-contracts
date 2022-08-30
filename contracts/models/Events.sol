@@ -19,4 +19,40 @@ abstract contract Events is Schema{
     );
     event PoolFunded(uint256 indexed poolId, uint256 amount);
     event PoolClosed(uint256 indexed poolId, uint256 amountWithdrawn);
+
+    // Qredos.sol
+
+    event QredosContractDeployed(
+        address paymentTokenAddress,
+        address lendingPoolAddress,
+        address poolRegistryStoreAddress
+    );
+    event LendingPoolUpdated(address oldValue, address newValue);
+    event DurationUpdated(uint32 oldValue, uint32 newValue);
+    event APRUpdated(uint16 oldValue, uint16 newValue);
+    event PurchaseCreated(
+        address indexed userAddress,
+        uint256 indexed poolId,
+        uint256 loanId,
+        uint256 indexed purchaseId,
+        uint256 tokenId,
+        address tokenAddress,
+        uint256 downPayment,
+        uint256 principal,
+        uint256 apr,
+        uint32 duration,
+        uint16 downPaymentPercentage
+    );
+    event PurchaseCompleted(uint256 indexed purchaseId);
+    event NFTClaimed(uint256 indexed purchaseId, address claimer);
+    event StartLiquidation(
+        uint256 indexed purchaseId,
+        uint256 discountAmount,
+        uint256 indexed liquidationiD
+    );
+    event CompleteLiquidation(
+        uint256 indexed purchaseId,
+        uint256 indexed liquidationiD,
+        address newOwner
+    );
 }

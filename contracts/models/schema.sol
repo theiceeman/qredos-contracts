@@ -3,6 +3,7 @@ pragma solidity 0.8.1;
 
 contract Schema {
 
+// PoolRegistry.sol
     enum PoolStatus {
         OPEN,
         CLOSED
@@ -15,7 +16,6 @@ contract Schema {
         FULL,
         PART
     }
-// PoolRegistry
 struct PoolDetails {
     uint256 amount;
     uint16 paymentCycle;
@@ -39,4 +39,36 @@ struct LoanRepaymentDetails {
     LoanRepaymentType RepaymentType;
     bool isExists;
 }
+
+// Qredos.sol
+
+
+    enum PurchaseStatus {
+        OPEN,
+        COMPLETED,
+        FAILED
+    }
+    enum LiquidationStatus {
+        OPEN,
+        COMPLETED
+    }
+
+    struct PurchaseDetails {
+        uint256 loanId;
+        uint256 poolId;
+        address escrowAddress;
+        address tokenAddress;
+        uint256 tokenId;
+        PurchaseStatus status;
+        bool isExists;
+    }
+
+    struct LiquidationDetails {
+        uint256 purchaseId;
+        uint256 discountAmount;
+        LiquidationStatus status;
+        bool isExists;
+    }
+
+    
 }

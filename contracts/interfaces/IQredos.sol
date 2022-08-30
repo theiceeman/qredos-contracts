@@ -1,0 +1,33 @@
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.1;
+
+interface IQredos {
+    function purchaseNFT(
+        address tokenAddress,
+        uint256 tokenId,
+        uint256 downPaymentAmount,
+        uint256 principal,
+        uint256 poolId
+    ) external;
+
+    function _completeNFTPurchase(uint256 purchaseId, address borrowerAddress)
+        external;
+
+    function repayLoan(
+        uint256 purchaseId,
+        LoanRepaymentType repaymentType,
+        uint256 poolId
+    ) external returns (bool);
+
+    function claimNft(uint256 purchaseId, uint256 poolId) external;
+
+    function startLiquidation(uint256 purchaseId, uint256 discountAmount)
+        external;
+
+    function completeLiquidation(uint256 liquidationId) external;
+
+    enum LoanRepaymentType {
+        FULL,
+        PART
+    }
+}
