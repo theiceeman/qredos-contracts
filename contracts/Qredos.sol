@@ -129,8 +129,9 @@ abstract contract Qredos is Ownable, Schema, PoolRegistry {
         );
     }
 
-    function _completeNFTPurchase(uint256 purchaseId, address borrowerAddress)
-        external whenNotPaused
+    function completeNFTPurchase(uint256 purchaseId, address borrowerAddress)
+        external
+        whenNotPaused
     {
         require(
             Purchase[borrowerAddress][purchaseId].isExists,
@@ -206,7 +207,10 @@ abstract contract Qredos is Ownable, Schema, PoolRegistry {
         return true;
     }
 
-    function claimNft(uint256 purchaseId, uint256 poolId) external whenNotPaused {
+    function claimNft(uint256 purchaseId, uint256 poolId)
+        external
+        whenNotPaused
+    {
         require(
             Purchase[msg.sender][purchaseId].isExists,
             "Qredos: Invalid purchase ID!"
@@ -239,7 +243,7 @@ abstract contract Qredos is Ownable, Schema, PoolRegistry {
                 purchase.loanId,
                 purchase.poolId
             ) != false,
-            "Qredos.startLiquidation: purchase is not defaulted!"
+            "Qredos.startLiquidation: loan is not defaulted!"
         );
         uint256 liquidationId = _createLiquidation(purchaseId, discountAmount);
         emit StartLiquidation(purchaseId, discountAmount, liquidationId);
@@ -274,6 +278,32 @@ abstract contract Qredos is Ownable, Schema, PoolRegistry {
             liquidationId,
             msg.sender
         );
+    }
+
+    function createPool(
+        uint256 _amount,
+        uint16 _paymentCycle,
+        uint16 _APR,
+        uint256 _durationInSecs,
+        uint16 _durationInMonths,
+        address _creator
+    ) external override {
+        PoolRegistry(lendingPoolAddress).createPool(
+            _amount,
+            _paymentCycle,
+            _APR,
+            _durationInSecs,
+            _durationInMonths,
+            _creator
+        );
+    }
+
+    function fundPool(uint256 poolId, uint256 amount) external override {
+        PoolRegistry(lendingPoolAddress).fundPool(poolId, amount);
+    }
+
+    function closePool(uint256 poolId, address reciever) external override {
+        PoolRegistry(lendingPoolAddress).closePool(poolId, reciever);
     }
 
     /////////////////////////
