@@ -40,7 +40,7 @@ abstract contract Events is Schema{
         uint256 downPayment,
         uint256 principal,
         uint256 apr,
-        uint32 duration,
+        uint256 duration,
         uint16 downPaymentPercentage
     );
     event PurchaseCompleted(uint256 indexed purchaseId);

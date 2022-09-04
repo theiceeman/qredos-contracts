@@ -12,8 +12,12 @@ import "./store/PoolRegistryStore.sol";
 contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
     using SafeERC20 for IERC20;
 
-    constructor(address _lendingTokenAddress) {
+    address public poolRegistryStoreAddress;
+
+    constructor(address _lendingTokenAddress, address _PoolRegistryStoreAddress)
+    {
         lendingToken = IERC20(_lendingTokenAddress);
+        poolRegistryStoreAddress = _PoolRegistryStoreAddress;
         emit PoolRegistryContractDeployed();
     }
 
@@ -24,7 +28,7 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
         uint256 _durationInSecs,
         uint16 _durationInMonths,
         address _creator
-    ) external onlyOwner {
+    ) external  onlyOwner {
         require(
             _paymentCycle != 0 &&
                 _durationInSecs != 0 &&
@@ -141,6 +145,15 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
             amount,
             LoanRepaymentType.PART
         );
+        // check if loan payment is complete; then set status to close.
+        PoolDetails memory Pool = PoolRegistryStore(poolRegistryStoreAddress)
+            .getPoolByID(poolId);
+        if (
+            PoolRegistryStore(poolRegistryStoreAddress)
+                .countLoanRepaymentsForLoan(loanId) == Pool.paymentCycle
+        ) {
+            Loans[poolId][loanId].status = LoanStatus.CLOSED;
+        }
         emit LoanRepaid(
             loanRepaymentId,
             loanId,
@@ -149,7 +162,11 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
         );
     }
 
-    function fundPool(uint256 poolId, uint256 amount) external onlyOwner {
+    function fundPool(uint256 poolId, uint256 amount)
+        external
+        
+        onlyOwner
+    {
         require(Pools[poolId].isExists, "Pool.fundPool: Invalid pool Id!");
         require(
             Pools[poolId].status == PoolStatus.OPEN,
@@ -170,7 +187,11 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
         emit PoolFunded(poolId, amount);
     }
 
-    function closePool(uint256 poolId, address reciever) external onlyOwner {
+    function closePool(uint256 poolId, address reciever)
+        external
+        
+        onlyOwner
+    {
         require(Pools[poolId].isExists, "Pool: Invalid pool Id!");
         uint256 amountWithdrawable = _getPoolBalanceWithInterest(poolId);
         _updatePool(
