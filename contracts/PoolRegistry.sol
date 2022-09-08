@@ -3,15 +3,17 @@ pragma solidity 0.8.1;
 import "./models/Schema.sol";
 import "./models/Events.sol";
 
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 import "./store/PoolRegistryStore.sol";
+import "hardhat/console.sol";
 
 contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
     using SafeERC20 for IERC20;
 
+    IERC20 internal lendingToken;
     address public poolRegistryStoreAddress;
 
     constructor(address _lendingTokenAddress, address _PoolRegistryStoreAddress)
@@ -28,7 +30,7 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
         uint256 _durationInSecs,
         uint16 _durationInMonths,
         address _creator
-    ) external  onlyOwner {
+    ) external onlyOwner {
         require(
             _paymentCycle != 0 &&
                 _durationInSecs != 0 &&
@@ -39,14 +41,15 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
         );
         require(_creator != address(0x0), "Pool.createPool: Invalid address!");
         lendingToken.safeTransferFrom(msg.sender, address(this), _amount);
-        uint256 poolId = _createPool(
-            _amount,
-            _paymentCycle,
-            _APR,
-            _durationInSecs,
-            _durationInMonths,
-            _creator
-        );
+        uint256 poolId = PoolRegistryStore(poolRegistryStoreAddress)
+            ._createPool(
+                _amount,
+                _paymentCycle,
+                _APR,
+                _durationInSecs,
+                _durationInMonths,
+                _creator
+            );
         emit PoolCreated(poolId, _creator);
         emit PoolFunded(poolId, _amount);
     }
@@ -75,9 +78,10 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
         uint256 poolId,
         address borrower
     ) external onlyOwner returns (uint256) {
-        require(Pools[poolId].isExists, "Pool.requestLoan: Invalid pool Id!");
+        PoolDetails memory Pool = PoolRegistryStore(poolRegistryStoreAddress)
+            .getPoolByID(poolId);
         require(
-            Pools[poolId].status == PoolStatus.OPEN,
+            Pool.status == PoolStatus.OPEN,
             "Pool.requestLoan: Pool status closed!"
         );
         require(principal > 0, "Pool.requestLoan: Invalid input!");
@@ -85,8 +89,10 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
             borrower != address(0x0),
             "Pool.requestLoan: Invalid borrower!"
         );
+        console.log("balanceOf", lendingToken.balanceOf(address(this)));
         lendingToken.safeTransferFrom(address(this), msg.sender, principal);
-        uint256 loanId = _createLoan(poolId, borrower, principal);
+        uint256 loanId = PoolRegistryStore(poolRegistryStoreAddress)
+            ._createLoan(poolId, borrower, principal);
         emit LoanCreated(loanId, borrower, principal);
         return loanId;
     }
@@ -107,11 +113,8 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
             "Pool.repayLoanFull: Invalid amount!"
         );
         lendingToken.safeTransferFrom(msg.sender, address(this), amount);
-        uint256 loanRepaymentId = _createLoanRepayment(
-            loanId,
-            amount,
-            LoanRepaymentType.FULL
-        );
+        uint256 loanRepaymentId = PoolRegistryStore(poolRegistryStoreAddress)
+            ._createLoanRepayment(loanId, amount, LoanRepaymentType.FULL);
         Loans[poolId][loanId].status = LoanStatus.CLOSED;
         emit LoanRepaid(
             loanRepaymentId,
@@ -140,11 +143,8 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
         /*
             check and set loan status to closed
         */
-        uint256 loanRepaymentId = _createLoanRepayment(
-            loanId,
-            amount,
-            LoanRepaymentType.PART
-        );
+        uint256 loanRepaymentId = PoolRegistryStore(poolRegistryStoreAddress)
+            ._createLoanRepayment(loanId, amount, LoanRepaymentType.PART);
         // check if loan payment is complete; then set status to close.
         PoolDetails memory Pool = PoolRegistryStore(poolRegistryStoreAddress)
             .getPoolByID(poolId);
@@ -162,46 +162,40 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
         );
     }
 
-    function fundPool(uint256 poolId, uint256 amount)
-        external
-        
-        onlyOwner
-    {
-        require(Pools[poolId].isExists, "Pool.fundPool: Invalid pool Id!");
+    function fundPool(uint256 poolId, uint256 amount) external onlyOwner {
+        PoolDetails memory Pool = PoolRegistryStore(poolRegistryStoreAddress)
+            .getPoolByID(poolId);
         require(
-            Pools[poolId].status == PoolStatus.OPEN,
+            Pool.status == PoolStatus.OPEN,
             "Pool.fundPool: Pool is closed!"
         );
         require(amount > 0, "Pool: Invalid input!");
         lendingToken.safeTransferFrom(msg.sender, address(this), amount);
-        _updatePool(
+        PoolRegistryStore(poolRegistryStoreAddress)._updatePool(
             poolId,
-            Pools[poolId].amount + amount,
-            Pools[poolId].paymentCycle,
-            Pools[poolId].APR,
-            Pools[poolId].durationInSecs,
-            Pools[poolId].durationInMonths,
-            Pools[poolId].creator,
-            Pools[poolId].status
+            Pool.amount + amount,
+            Pool.paymentCycle,
+            Pool.APR,
+            Pool.durationInSecs,
+            Pool.durationInMonths,
+            Pool.creator,
+            Pool.status
         );
         emit PoolFunded(poolId, amount);
     }
 
-    function closePool(uint256 poolId, address reciever)
-        external
-        
-        onlyOwner
-    {
-        require(Pools[poolId].isExists, "Pool: Invalid pool Id!");
+    function closePool(uint256 poolId, address reciever) external onlyOwner {
+        PoolDetails memory Pool = PoolRegistryStore(poolRegistryStoreAddress)
+            .getPoolByID(poolId);
         uint256 amountWithdrawable = _getPoolBalanceWithInterest(poolId);
-        _updatePool(
+        PoolRegistryStore(poolRegistryStoreAddress)._updatePool(
             poolId,
-            Pools[poolId].amount,
-            Pools[poolId].paymentCycle,
-            Pools[poolId].APR,
-            Pools[poolId].durationInSecs,
-            Pools[poolId].durationInMonths,
-            Pools[poolId].creator,
+            Pool.amount,
+            Pool.paymentCycle,
+            Pool.APR,
+            Pool.durationInSecs,
+            Pool.durationInMonths,
+            Pool.creator,
             PoolStatus.CLOSED
         );
         lendingToken.safeTransferFrom(
@@ -236,10 +230,16 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
     // This can be used to check exact amount that can be withdrawn from a pool
     function _getPoolBalance(uint256 poolId) public view returns (uint256) {
         uint256 totalAmountLoaned;
-        for (uint256 i = 0; i < countLoansInPool[poolId]; i++) {
-            totalAmountLoaned += Loans[poolId][i].principal;
+        uint256 loansInPool = PoolRegistryStore(poolRegistryStoreAddress)
+            .getCountLoansInPool(poolId);
+        for (uint256 i = 0; i < loansInPool; i++) {
+            totalAmountLoaned += PoolRegistryStore(poolRegistryStoreAddress)
+                .getLoanByPoolID(poolId, i)
+                .principal;
         }
-        return (Pools[poolId].amount - totalAmountLoaned);
+        return (PoolRegistryStore(poolRegistryStoreAddress)
+            .getPoolByID(poolId)
+            .amount - totalAmountLoaned);
     }
 
     function _calcLoanPartPayment(uint256 loanId, uint256 poolId)

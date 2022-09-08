@@ -2,7 +2,6 @@
 pragma solidity 0.8.1;
 
 interface IQredos {
-    
     function purchaseNFT(
         address tokenAddress,
         uint256 tokenId,
@@ -35,9 +34,12 @@ interface IQredos {
         uint16 _durationInMonths,
         address _creator
     ) external;
+
     function fundPool(uint256 poolId, uint256 amount) external;
 
     function closePool(uint256 poolId, address reciever) external;
+
+    function getPoolBalance(uint256 poolId) external view;
 
     enum LoanRepaymentType {
         FULL,

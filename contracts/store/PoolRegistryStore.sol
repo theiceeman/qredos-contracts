@@ -4,11 +4,11 @@ import "../models/Schema.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "hardhat/console.sol";
 
-contract PoolRegistryStore is Schema {
+contract PoolRegistryStore is Ownable, Schema {
     using SafeERC20 for IERC20;
-
-    IERC20 internal lendingToken;
 
     mapping(uint256 => PoolDetails) public Pools;
     uint256 public totalPools = 0;
@@ -16,7 +16,7 @@ contract PoolRegistryStore is Schema {
     // (poolId => loanId[] => Details)
     mapping(uint256 => mapping(uint256 => LoanDetails)) public Loans;
     uint256 public totalLoans = 0;
-    // (pool => noOfLoans)
+    // (poolId => noOfLoans)
     mapping(uint256 => uint256) public countLoansInPool;
 
     // (loanId => loanRepaymentiD[] => Details)
@@ -31,7 +31,10 @@ contract PoolRegistryStore is Schema {
         view
         returns (LoanDetails memory)
     {
-        require(Loans[poolId][loanId].isExists, "No such record");
+        require(
+            Loans[poolId][loanId].isExists,
+            "getLoanByPoolID: No such record"
+        );
         return Loans[poolId][loanId];
     }
 
@@ -40,8 +43,18 @@ contract PoolRegistryStore is Schema {
         view
         returns (PoolDetails memory)
     {
-        require(Pools[poolId].isExists, "No such record");
+        require(Pools[poolId].isExists, "getPoolByID: No such record");
         return Pools[poolId];
+    }
+
+    function getCountLoansInPool(uint256 poolId)
+        external
+        view
+        returns (uint256)
+    {
+        // console.log(Pools)
+        require(Pools[poolId].isExists, "getCountLoansInPool: No such record");
+        return countLoansInPool[poolId];
     }
 
     // POOL
@@ -52,9 +65,9 @@ contract PoolRegistryStore is Schema {
         uint256 _durationInSecs,
         uint16 _durationInMonths,
         address _creator
-    ) internal returns (uint256) {
+    ) external onlyOwner returns (uint256) {
         uint256 poolId = totalPools;
-        Pools[poolId++] = PoolDetails(
+        Pools[poolId] = PoolDetails(
             _amount,
             _paymentCycle,
             _APR,
@@ -65,7 +78,7 @@ contract PoolRegistryStore is Schema {
             true
         );
         ++totalPools;
-        return poolId++;
+        return poolId;
     }
 
     function _updatePool(
@@ -77,7 +90,7 @@ contract PoolRegistryStore is Schema {
         uint16 _durationInMonths,
         address _creator,
         PoolStatus status
-    ) internal {
+    ) external onlyOwner {
         Pools[poolId] = PoolDetails(
             _amount,
             _paymentCycle,
@@ -107,9 +120,9 @@ contract PoolRegistryStore is Schema {
         uint256 poolId,
         address borrowerAddress,
         uint256 principal
-    ) internal returns (uint256) {
+    ) external onlyOwner returns (uint256) {
         uint256 loanId = totalLoans;
-        Loans[poolId][loanId++] = LoanDetails(
+        Loans[poolId][loanId] = LoanDetails(
             poolId,
             borrowerAddress,
             principal,
@@ -117,27 +130,27 @@ contract PoolRegistryStore is Schema {
             true
         );
         ++totalLoans;
-        countLoansInPool[poolId] = countLoansInPool[poolId]++;
-        return loanId++;
+        countLoansInPool[poolId] = ++countLoansInPool[poolId];
+        return loanId;
     }
 
     function _createLoanRepayment(
         uint256 loanId,
         uint256 amount,
         LoanRepaymentType repaymentType
-    ) internal returns (uint256) {
+    ) external onlyOwner returns (uint256) {
         uint256 loanRepayment = totalLoanRepayments;
-        LoanRepayment[loanId][loanRepayment++] = LoanRepaymentDetails(
+        LoanRepayment[loanId][loanRepayment] = LoanRepaymentDetails(
             loanId,
             amount,
             repaymentType,
             true
         );
         ++totalLoanRepayments;
-        countLoanRepaymentsForLoan[loanId] = countLoanRepaymentsForLoan[
+        countLoanRepaymentsForLoan[loanId] = ++countLoanRepaymentsForLoan[
             loanId
-        ]++;
-        return loanRepayment++;
+        ];
+        return loanRepayment;
     }
 
     function _hasPendingLoanRepayment(uint256 poolId)

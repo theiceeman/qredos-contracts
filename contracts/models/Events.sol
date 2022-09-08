@@ -24,12 +24,9 @@ abstract contract Events is Schema{
 
     event QredosContractDeployed(
         address paymentTokenAddress,
-        address lendingPoolAddress,
-        address poolRegistryStoreAddress
+        address lendingPoolAddress
     );
-    event LendingPoolUpdated(address oldValue, address newValue);
-    event DurationUpdated(uint32 oldValue, uint32 newValue);
-    event APRUpdated(uint16 oldValue, uint16 newValue);
+    event LendingPoolAddressUpdated(address oldValue, address newValue);
     event PurchaseCreated(
         address indexed userAddress,
         uint256 indexed poolId,
@@ -55,4 +52,5 @@ abstract contract Events is Schema{
         uint256 indexed liquidationiD,
         address newOwner
     );
+    event PaymentTokenAddressUpdated(address oldValue, address newValue);
 }
