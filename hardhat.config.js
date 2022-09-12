@@ -2,6 +2,7 @@ require("@nomicfoundation/hardhat-toolbox");
 require("@nomiclabs/hardhat-waffle");
 require("@nomiclabs/hardhat-ethers");
 require("./tasks/PrintAccounts");
+require("hardhat-gas-reporter");
 
 /**
  * @type import('hardhat/config').HardhatUserConfig
@@ -9,7 +10,10 @@ require("./tasks/PrintAccounts");
 module.exports = {
   defaultNetwork: "hardhat",
   networks: {
-    hardhat: {},
+    hardhat: {
+      blockGasLimit: 12000000,
+      allowUnlimitedContractSize: true,
+    },
     /* rinkeby: {
       url: "https://eth-rinkeby.alchemyapi.io/v2/123abc123abc123abc123abc123abcde",
       accounts: [privateKey1, privateKey2, ...]
@@ -38,5 +42,8 @@ module.exports = {
   },
   mocha: {
     timeout: 20000,
+  },
+  gasReporter: {
+    enabled: true,
   },
 };

@@ -89,8 +89,7 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
             borrower != address(0x0),
             "Pool.requestLoan: Invalid borrower!"
         );
-        console.log("balanceOf", lendingToken.balanceOf(address(this)));
-        lendingToken.safeTransferFrom(address(this), msg.sender, principal);
+        lendingToken.safeTransfer(msg.sender, principal);
         uint256 loanId = PoolRegistryStore(poolRegistryStoreAddress)
             ._createLoan(poolId, borrower, principal);
         emit LoanCreated(loanId, borrower, principal);

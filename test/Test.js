@@ -1,5 +1,5 @@
 const { expect } = require("chai");
-const { BigNumber } = require("ethers");
+const { BigNumber, providers } = require("ethers");
 const { parseEther } = require("ethers/lib/utils");
 const { ethers } = require("hardhat");
 
@@ -145,6 +145,8 @@ describe("Qredos", function () {
       let downPaymentAmount = parseEther("2000");
       let invalidPrincipal = parseEther("2000");
       // 7500 000000000000000000
+      // console.log(buyer.address)
+      // console.log("ethBalance:", await ethers.provider.getBalance(buyer.adddress)); return;
       await WETH.connect(buyer).approve(qredos.address, downPaymentAmount);
       let txn = await qredos
         .connect(buyer)

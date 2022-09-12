@@ -75,10 +75,6 @@ contract Qredos is Ownable, Schema, Events {
             address(this),
             downPaymentAmount
         );
-        IERC20(paymentTokenAddress).approve(
-            lendingPoolAddress,
-            downPaymentAmount
-        );
         uint256 loanId = IPoolRegistry(lendingPoolAddress).requestLoan(
             principal,
             poolId,
@@ -90,6 +86,7 @@ contract Qredos is Ownable, Schema, Events {
                 (downPaymentAmount + principal),
             "Qredos.purchaseNFT: Insufficient funds!"
         );
+        console.log("damn!");
         uint256 purchaseId = QredosStore(qredosStoreAddress)._createPurchase(
             msg.sender,
             loanId,
