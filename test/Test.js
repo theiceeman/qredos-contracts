@@ -4,7 +4,7 @@ const { parseEther } = require("ethers/lib/utils");
 const { ethers } = require("hardhat");
 
 describe("Qredos", function () {
-  let poolId;
+  let POOL_ID, PURCHASE_ID;
   before(async () => {
     [deployer, buyer, lender, liquidator] = await ethers.getSigners();
 
@@ -37,6 +37,8 @@ describe("Qredos", function () {
     await poolRegistry.transferOwnership(qredos.address);
     // Transfer pool store ownership to pool
     await poolRegistryStore.transferOwnership(poolRegistry.address);
+    // Transfer qredos store ownership to oracle
+    await qredosStore.transferOwnership(qredos.address);
 
     // Fund test accounts with accepted payment token
     await WETH.transfer(buyer.address, parseEther("50000"));
@@ -55,14 +57,14 @@ describe("Qredos", function () {
       let PoolCreatedEvent = reciept.events?.filter((x) => {
         return x.event == "PoolCreated";
       });
-      poolId = PoolCreatedEvent[0].args.poolId;
+      POOL_ID = PoolCreatedEvent[0].args.poolId;
 
       expect(reciept).to.emit(PoolRegistry, "PoolCreated");
       expect(reciept).to.emit(PoolRegistry, "PoolFunded");
     });
     it("should increase pool balance if successfull", async () => {
       let expectedPoolBalance = parseEther("5000");
-      let result = await qredos.getPoolBalance(poolId);
+      let result = await qredos.getPoolBalance(POOL_ID);
       expect(result).to.equal(expectedPoolBalance);
     });
   });
@@ -79,13 +81,13 @@ describe("Qredos", function () {
       let amount = parseEther("2500");
 
       await WETH.connect(lender).approve(qredos.address, amount);
-      let txn = await qredos.connect(lender).fundPool(poolId, amount);
+      let txn = await qredos.connect(lender).fundPool(POOL_ID, amount);
       let reciept = await txn.wait();
       expect(reciept).to.emit(PoolRegistry, "PoolFunded");
     });
     it("should increase pool balance if successfull", async () => {
       let expectedPoolBalance = parseEther("7500");
-      let result = await qredos.getPoolBalance(poolId);
+      let result = await qredos.getPoolBalance(POOL_ID);
       expect(result).to.equal(expectedPoolBalance);
     });
   });
@@ -119,7 +121,7 @@ describe("Qredos", function () {
             0,
             downPaymentAmount,
             invalidPrincipal,
-            poolId
+            POOL_ID
           )
       ).to.be.revertedWith("Qredos.purchaseNFT: Invalid principal!");
     });
@@ -135,7 +137,7 @@ describe("Qredos", function () {
             0,
             downPaymentAmount,
             invalidPrincipal,
-            poolId
+            POOL_ID
           )
       ).to.be.revertedWith(
         "Qredos.purchaseNFT: Selected pool can't fund purchase!"
@@ -144,9 +146,6 @@ describe("Qredos", function () {
     it("should emit PurchaseCreated event if successfull", async () => {
       let downPaymentAmount = parseEther("2000");
       let invalidPrincipal = parseEther("2000");
-      // 7500 000000000000000000
-      // console.log(buyer.address)
-      // console.log("ethBalance:", await ethers.provider.getBalance(buyer.adddress)); return;
       await WETH.connect(buyer).approve(qredos.address, downPaymentAmount);
       let txn = await qredos
         .connect(buyer)
@@ -155,10 +154,43 @@ describe("Qredos", function () {
           0,
           downPaymentAmount,
           invalidPrincipal,
-          poolId
+          POOL_ID
         );
-      let result = txn.wait();
+      let result = await txn.wait();
+
+      let PoolCreatedEvent = result.events?.filter((x) => {
+        return x.event == "PurchaseCreated";
+      });
+      PURCHASE_ID = PoolCreatedEvent[0].args.purchaseId;
+
       expect(result).to.emit(qredos, "PurchaseCreated");
     });
+  });
+
+  describe("completeNFTPurchase", async function () {
+    it("should fail with invalid purchaseId", async () => {
+      let invalidPurchaseId = 10;
+      await expect(
+        qredos.connect(buyer).completeNFTPurchase(invalidPurchaseId)
+      ).to.be.revertedWith("No such record");
+    });
+    it("should fail if oracle does not own nft", async () => {
+      await expect(
+        qredos.connect(buyer).completeNFTPurchase(PURCHASE_ID)
+      ).to.be.revertedWith("Qredos: Purchase Incomplete!");
+
+      // Tranfer token to oracle.
+      // await BAYC.safeTransferFrom(deployer.address, qredos.address, 0);
+      await BAYC["safeTransferFrom(address,address,uint256)"](
+        deployer.address,
+        qredos.address,
+        0
+      );
+    });
+    // it("should fail if oracle does not own escrow", async () => {
+    //   await expect(
+    //     qredos.connect(buyer).completeNFTPurchase(PURCHASE_ID)
+    //   ).to.be.revertedWith("Qredos: Purchase Incomplete!");
+    // });
   });
 });

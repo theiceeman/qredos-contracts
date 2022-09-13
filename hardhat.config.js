@@ -2,7 +2,10 @@ require("@nomicfoundation/hardhat-toolbox");
 require("@nomiclabs/hardhat-waffle");
 require("@nomiclabs/hardhat-ethers");
 require("./tasks/PrintAccounts");
-require("hardhat-gas-reporter");
+// require("hardhat-gas-reporter");
+
+// const PRIVATE_KEY_1 = process.env.PRIVATE_KEY;
+// const PRIVATE_KEY_2 = process.env.PRIVATE_KEY_2;
 
 /**
  * @type import('hardhat/config').HardhatUserConfig

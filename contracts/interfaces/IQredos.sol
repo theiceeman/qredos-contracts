@@ -10,7 +10,7 @@ interface IQredos {
         uint256 poolId
     ) external;
 
-    function completeNFTPurchase(uint256 purchaseId, address borrowerAddress)
+    function completeNFTPurchase(uint256 purchaseId)
         external;
 
     function repayLoan(

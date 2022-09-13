@@ -7,6 +7,7 @@ import "./models/Events.sol";
 import "./interfaces/IPoolRegistry.sol";
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
 import "@openzeppelin/contracts/interfaces/IERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -16,7 +17,7 @@ import "./Escrow.sol";
 import "./store/PoolRegistryStore.sol";
 import "./store/QredosStore.sol";
 
-contract Qredos is Ownable, Schema, Events {
+contract Qredos is Ownable, Schema, Events, IERC721Receiver {
     using SafeERC20 for IERC20;
 
     address public paymentTokenAddress;
@@ -43,9 +44,16 @@ contract Qredos is Ownable, Schema, Events {
         emit QredosContractDeployed(_paymentTokenAddress, _lendingPoolAddress);
     }
 
-    /*
-        make sure escrow is owned by oracle before transferring nft to it. 
-    */
+
+    function onERC721Received(
+        address,
+        address,
+        uint256,
+        bytes calldata
+    ) public pure override returns (bytes4) {
+        return IERC721Receiver.onERC721Received.selector;
+    }
+
     function purchaseNFT(
         address tokenAddress,
         uint256 tokenId,
@@ -82,11 +90,10 @@ contract Qredos is Ownable, Schema, Events {
         );
 
         require(
-            IERC20(paymentTokenAddress).balanceOf(address(this)) >
+            IERC20(paymentTokenAddress).balanceOf(address(this)) >=
                 (downPaymentAmount + principal),
             "Qredos.purchaseNFT: Insufficient funds!"
         );
-        console.log("damn!");
         uint256 purchaseId = QredosStore(qredosStoreAddress)._createPurchase(
             msg.sender,
             loanId,
@@ -111,12 +118,12 @@ contract Qredos is Ownable, Schema, Events {
         );
     }
 
-    function completeNFTPurchase(uint256 purchaseId, address borrowerAddress)
+    function completeNFTPurchase(uint256 purchaseId)
         external
         whenNotPaused
     {
         PurchaseDetails memory purchase = QredosStore(qredosStoreAddress)
-            .getPurchaseByID(borrowerAddress, purchaseId);
+            .getPurchaseByID(msg.sender, purchaseId);
         require(
             ERC721(purchase.tokenAddress).ownerOf(purchase.tokenId) ==
                 address(this),
@@ -125,7 +132,7 @@ contract Qredos is Ownable, Schema, Events {
 
         // update to proxy pattern to make deployment cheaper
         address escrowAddress = address(
-            new Escrow(borrowerAddress, purchase.tokenId, purchase.tokenAddress)
+            new Escrow(address(this), purchase.tokenId, purchase.tokenAddress)
         );
         require(
             Escrow(escrowAddress).owner() == address(this),
@@ -135,7 +142,7 @@ contract Qredos is Ownable, Schema, Events {
         Escrow(escrowAddress).deposit(purchase.tokenId, purchase.tokenAddress);
 
         QredosStore(qredosStoreAddress)._updatePurchase(
-            borrowerAddress,
+            msg.sender,
             purchaseId,
             purchase.loanId,
             purchase.poolId,
