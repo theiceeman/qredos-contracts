@@ -25,12 +25,12 @@ interface IPoolRegistry {
         uint256 loanId,
         uint256 amount,
         uint256 poolId
-    ) external;
+    ) external returns(uint256);
     function repayLoanPart(
         uint256 loanId,
         uint256 amount,
         uint256 poolId
-    ) external;
+    ) external returns(uint256);
     function fundPool(uint256 poolId, uint256 amount) external;
     function closePool(uint256 poolId, address reciever) external;
 }

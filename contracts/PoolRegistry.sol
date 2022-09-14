@@ -100,38 +100,35 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
         uint256 loanId,
         uint256 amount,
         uint256 poolId
-    ) external onlyOwner {
-        require(
-            Loans[poolId][loanId].isExists,
-            "Pool.repayLoanFull: Invalid loan Id!"
-        );
+    ) external onlyOwner returns (uint256) {
+        LoanDetails memory Loan = PoolRegistryStore(poolRegistryStoreAddress)
+            .getLoanByPoolID(poolId, loanId);
         require(amount > 0, "Pool.repayLoanFull: Invalid input!");
         // Amount should equal full amount borrowed.
         require(
-            amount == Loans[poolId][loanId].principal,
+            amount == Loan.principal,
             "Pool.repayLoanFull: Invalid amount!"
         );
         lendingToken.safeTransferFrom(msg.sender, address(this), amount);
         uint256 loanRepaymentId = PoolRegistryStore(poolRegistryStoreAddress)
             ._createLoanRepayment(loanId, amount, LoanRepaymentType.FULL);
-        Loans[poolId][loanId].status = LoanStatus.CLOSED;
-        emit LoanRepaid(
-            loanRepaymentId,
+        PoolRegistryStore(poolRegistryStoreAddress)._updateLoan(
             loanId,
-            amount,
-            LoanRepaymentType.FULL
+            poolId,
+            Loan.borrower,
+            Loan.principal,
+            LoanStatus.CLOSED
         );
+        return loanRepaymentId;
     }
 
     function repayLoanPart(
         uint256 loanId,
         uint256 amount,
         uint256 poolId
-    ) external onlyOwner {
-        require(
-            Loans[poolId][loanId].isExists,
-            "Pool.repayLoanPart: Invalid loan Id!"
-        );
+    ) external onlyOwner returns (uint256) {
+        LoanDetails memory Loan = PoolRegistryStore(poolRegistryStoreAddress)
+            .getLoanByPoolID(poolId, loanId);
         require(amount > 0, "Pool.repayLoanPart: Invalid input!");
         // amount should equal percentage scheduled for one payment cycle
         require(
@@ -139,9 +136,7 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
             "Pool.repayLoanPart: Invalid amount!"
         );
         lendingToken.safeTransferFrom(msg.sender, address(this), amount);
-        /*
-            check and set loan status to closed
-        */
+
         uint256 loanRepaymentId = PoolRegistryStore(poolRegistryStoreAddress)
             ._createLoanRepayment(loanId, amount, LoanRepaymentType.PART);
         // check if loan payment is complete; then set status to close.
@@ -151,14 +146,15 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
             PoolRegistryStore(poolRegistryStoreAddress)
                 .countLoanRepaymentsForLoan(loanId) == Pool.paymentCycle
         ) {
-            Loans[poolId][loanId].status = LoanStatus.CLOSED;
-        }
-        emit LoanRepaid(
-            loanRepaymentId,
+        PoolRegistryStore(poolRegistryStoreAddress)._updateLoan(
             loanId,
-            amount,
-            LoanRepaymentType.PART
+            poolId,
+            Loan.borrower,
+            Loan.principal,
+            LoanStatus.CLOSED
         );
+        }
+        return loanRepaymentId;
     }
 
     function fundPool(uint256 poolId, uint256 amount) external onlyOwner {

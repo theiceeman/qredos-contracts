@@ -17,7 +17,7 @@ interface IQredos {
         uint256 purchaseId,
         LoanRepaymentType repaymentType,
         uint256 poolId
-    ) external returns (bool);
+    ) external;
 
     function claimNft(uint256 purchaseId, uint256 poolId) external;
 

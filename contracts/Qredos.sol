@@ -44,7 +44,6 @@ contract Qredos is Ownable, Schema, Events, IERC721Receiver {
         emit QredosContractDeployed(_paymentTokenAddress, _lendingPoolAddress);
     }
 
-
     function onERC721Received(
         address,
         address,
@@ -118,10 +117,7 @@ contract Qredos is Ownable, Schema, Events, IERC721Receiver {
         );
     }
 
-    function completeNFTPurchase(uint256 purchaseId)
-        external
-        whenNotPaused
-    {
+    function completeNFTPurchase(uint256 purchaseId) external whenNotPaused {
         PurchaseDetails memory purchase = QredosStore(qredosStoreAddress)
             .getPurchaseByID(msg.sender, purchaseId);
         require(
@@ -158,7 +154,7 @@ contract Qredos is Ownable, Schema, Events, IERC721Receiver {
         uint256 purchaseId,
         LoanRepaymentType repaymentType,
         uint256 poolId
-    ) external whenNotPaused returns (bool) {
+    ) external whenNotPaused  {
         PurchaseDetails memory purchase = QredosStore(qredosStoreAddress)
             .getPurchaseByID(msg.sender, purchaseId);
         LoanDetails memory loan = PoolRegistryStore(
@@ -171,10 +167,14 @@ contract Qredos is Ownable, Schema, Events, IERC721Receiver {
                 address(this),
                 loan.principal
             );
-            IPoolRegistry(lendingPoolAddress).repayLoanFull(
+            IERC20(paymentTokenAddress).approve(lendingPoolAddress, loan.principal);
+            uint256 loanRepaymentId = IPoolRegistry(lendingPoolAddress)
+                .repayLoanFull(purchase.loanId, loan.principal, poolId);
+            emit LoanRepaid(
+                loanRepaymentId,
                 purchase.loanId,
                 loan.principal,
-                poolId
+                LoanRepaymentType.FULL
             );
         } else if (repaymentType == LoanRepaymentType.PART) {
             uint256 partPayment = PoolRegistry(lendingPoolAddress)
@@ -184,13 +184,16 @@ contract Qredos is Ownable, Schema, Events, IERC721Receiver {
                 address(this),
                 partPayment
             );
-            IPoolRegistry(lendingPoolAddress).repayLoanPart(
+            IERC20(paymentTokenAddress).approve(lendingPoolAddress, loan.principal);
+            uint256 loanRepaymentId = IPoolRegistry(lendingPoolAddress)
+                .repayLoanPart(purchase.loanId, partPayment, poolId);
+            emit LoanRepaid(
+                loanRepaymentId,
                 purchase.loanId,
-                partPayment,
-                poolId
+                loan.principal,
+                LoanRepaymentType.PART
             );
         }
-        return true;
     }
 
     function claimNft(uint256 purchaseId, uint256 poolId)

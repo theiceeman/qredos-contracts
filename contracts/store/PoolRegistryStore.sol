@@ -134,6 +134,22 @@ contract PoolRegistryStore is Ownable, Schema {
         return loanId;
     }
 
+    function _updateLoan(
+        uint256 loanId,
+        uint256 poolId,
+        address borrowerAddress,
+        uint256 principal,
+        LoanStatus status
+    ) external onlyOwner {
+        Loans[poolId][loanId] = LoanDetails(
+            poolId,
+            borrowerAddress,
+            principal,
+            status,
+            true
+        );
+    }
+
     function _createLoanRepayment(
         uint256 loanId,
         uint256 amount,
