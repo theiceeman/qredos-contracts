@@ -64,8 +64,14 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
         require(principal > 0, "Pool.getValidPools: Invalid input!");
         uint256[] memory validPools;
         uint256 count = 0;
+        uint256 totalPools = PoolRegistryStore(poolRegistryStoreAddress)
+            .totalPools();
         for (uint256 i = 0; i < totalPools; i++) {
-            if (Pools[i].amount > principal) {
+            if (
+                PoolRegistryStore(poolRegistryStoreAddress)
+                    .getPoolByID(i)
+                    .amount > principal
+            ) {
                 validPools[count] = i;
                 count++;
             }
@@ -117,6 +123,7 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
             poolId,
             Loan.borrower,
             Loan.principal,
+            Loan.createdAtTimestamp,
             LoanStatus.CLOSED
         );
         return loanRepaymentId;
@@ -151,6 +158,7 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
                 poolId,
                 Loan.borrower,
                 Loan.principal,
+                Loan.createdAtTimestamp,
                 LoanStatus.CLOSED
             );
         }
@@ -193,12 +201,7 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
             Pool.creator,
             PoolStatus.CLOSED
         );
-        lendingToken.safeTransferFrom(
-            address(this),
-            reciever,
-            amountWithdrawable
-        );
-        emit PoolClosed(poolId, amountWithdrawable);
+        lendingToken.safeTransfer(reciever, amountWithdrawable);
     }
 
     // INTERNAL FUNCTIONS
@@ -213,12 +216,21 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
         uint256 totalAmountLoaned;
         uint256 totalAmountRepaid;
         for (uint256 i = 0; i < countLoansInPool[poolId]; i++) {
-            totalAmountLoaned += Loans[poolId][i].principal;
+            LoanDetails memory Loan = PoolRegistryStore(
+                poolRegistryStoreAddress
+            ).getLoanByPoolID(poolId, i);
+            totalAmountLoaned += Loan.principal;
             for (uint256 j = 0; j < countLoanRepaymentsForLoan[i]; j++) {
-                totalAmountRepaid += LoanRepayment[i][j].amount;
+                LoanRepaymentDetails memory LoanRepayment = PoolRegistryStore(
+                    poolRegistryStoreAddress
+                )._getLoanRepaymentByLoanID(i, j);
+                totalAmountRepaid += LoanRepayment.amount;
             }
         }
-        return (Pools[poolId].amount - totalAmountLoaned) + totalAmountRepaid;
+        return
+            (PoolRegistryStore(poolRegistryStoreAddress)
+                .getPoolByID(poolId)
+                .amount - totalAmountLoaned) + totalAmountRepaid;
     }
 
     // (pool balance - total lent out)
@@ -256,24 +268,37 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
         view
         returns (bool)
     {
-        require(
-            Loans[poolId][loanId].isExists,
-            "Pool._isLoanInDefault: Invalid loan Id!"
-        );
-        require(
-            LoanRepayment[loanId][0].isExists,
-            "Pool._isLoanInDefault: No repayments!"
-        );
-        if (LoanRepayment[loanId][0].RepaymentType == LoanRepaymentType.FULL) {
-            return false;
-        }
-        uint256 poolPaymentCycle = Pools[poolId].paymentCycle;
+        PoolDetails memory Pool = PoolRegistryStore(poolRegistryStoreAddress)
+            .getPoolByID(poolId);
+        // check if loanId is valid
+        LoanDetails memory Loan = PoolRegistryStore(poolRegistryStoreAddress)
+            .getLoanByPoolID(poolId, loanId);
+
+        uint256 poolPaymentCycle = Pool.paymentCycle;
         uint256 countPartPayment;
         for (uint256 i = 0; i <= poolPaymentCycle; i++) {
-            if (LoanRepayment[loanId][i].isExists) {
-                countPartPayment++;
+            LoanRepaymentDetails memory LoanRepayment = PoolRegistryStore(
+                poolRegistryStoreAddress
+            )._getLoanRepaymentByLoanID(loanId, i);
+
+            if (LoanRepayment.isExists == true) {
+                if (LoanRepayment.RepaymentType == LoanRepaymentType.FULL) {
+                    return false;
+                } else if (
+                    LoanRepayment.RepaymentType == LoanRepaymentType.PART
+                ) {
+                    countPartPayment++;
+                }
             } else {
-                return true;
+                uint256 partPayDuration = Pool.durationInSecs /
+                    Pool.paymentCycle;
+                uint256 partPayDeadline = Loan.createdAtTimestamp +
+                    (partPayDuration * (i + 1));
+                if (block.timestamp > partPayDeadline) {
+                    return true;
+                } else {
+                    return false;
+                }
             }
         }
         if (poolPaymentCycle == countPartPayment) {

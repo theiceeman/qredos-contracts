@@ -45,11 +45,11 @@ abstract contract Events is Schema{
     event StartLiquidation(
         uint256 indexed purchaseId,
         uint256 discountAmount,
-        uint256 indexed liquidationiD
+        uint256 indexed liquidationId
     );
     event CompleteLiquidation(
         uint256 indexed purchaseId,
-        uint256 indexed liquidationiD,
+        uint256 indexed liquidationId,
         address newOwner
     );
     event PaymentTokenAddressUpdated(address oldValue, address newValue);

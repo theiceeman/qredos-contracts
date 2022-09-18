@@ -30,6 +30,7 @@ struct LoanDetails {
     uint256 poolId;
     address borrower;
     uint256 principal;
+    uint256 createdAtTimestamp;
     LoanStatus status; //  OPEN | CLOSED
     bool isExists;
 }

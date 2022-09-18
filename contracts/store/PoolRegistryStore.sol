@@ -26,6 +26,15 @@ contract PoolRegistryStore is Ownable, Schema {
     // (loanId => noOfLoanRepayments)
     mapping(uint256 => uint256) public countLoanRepaymentsForLoan;
 
+
+    function _getLoanRepaymentByLoanID(uint256 loanId, uint256 loanRepaymentiD)
+        external
+        view
+        returns (LoanRepaymentDetails memory)
+    {
+        return LoanRepayment[loanId][loanRepaymentiD];
+    }
+
     function getLoanRepaymentByLoanID(uint256 loanId, uint256 loanRepaymentiD)
         external
         view
@@ -136,6 +145,7 @@ contract PoolRegistryStore is Ownable, Schema {
             poolId,
             borrowerAddress,
             principal,
+            block.timestamp,
             LoanStatus.OPEN,
             true
         );
@@ -149,12 +159,14 @@ contract PoolRegistryStore is Ownable, Schema {
         uint256 poolId,
         address borrowerAddress,
         uint256 principal,
+        uint256 createdAtTimestamp,
         LoanStatus status
     ) external onlyOwner {
         Loans[poolId][loanId] = LoanDetails(
             poolId,
             borrowerAddress,
             principal,
+            createdAtTimestamp,
             status,
             true
         );

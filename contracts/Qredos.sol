@@ -93,6 +93,9 @@ contract Qredos is Ownable, Schema, Events, IERC721Receiver {
                 (downPaymentAmount + principal),
             "Qredos.purchaseNFT: Insufficient funds!"
         );
+        /* 
+            move funds to secure vault.
+         */
         uint256 purchaseId = QredosStore(qredosStoreAddress)._createPurchase(
             msg.sender,
             loanId,
@@ -154,7 +157,7 @@ contract Qredos is Ownable, Schema, Events, IERC721Receiver {
         uint256 purchaseId,
         LoanRepaymentType repaymentType,
         uint256 poolId
-    ) external whenNotPaused  {
+    ) external whenNotPaused {
         PurchaseDetails memory purchase = QredosStore(qredosStoreAddress)
             .getPurchaseByID(msg.sender, purchaseId);
         LoanDetails memory loan = PoolRegistryStore(
@@ -167,7 +170,10 @@ contract Qredos is Ownable, Schema, Events, IERC721Receiver {
                 address(this),
                 loan.principal
             );
-            IERC20(paymentTokenAddress).approve(lendingPoolAddress, loan.principal);
+            IERC20(paymentTokenAddress).approve(
+                lendingPoolAddress,
+                loan.principal
+            );
             uint256 loanRepaymentId = IPoolRegistry(lendingPoolAddress)
                 .repayLoanFull(purchase.loanId, loan.principal, poolId);
             emit LoanRepaid(
@@ -184,7 +190,10 @@ contract Qredos is Ownable, Schema, Events, IERC721Receiver {
                 address(this),
                 partPayment
             );
-            IERC20(paymentTokenAddress).approve(lendingPoolAddress, loan.principal);
+            IERC20(paymentTokenAddress).approve(
+                lendingPoolAddress,
+                loan.principal
+            );
             uint256 loanRepaymentId = IPoolRegistry(lendingPoolAddress)
                 .repayLoanPart(purchase.loanId, partPayment, poolId);
             emit LoanRepaid(
@@ -227,7 +236,7 @@ contract Qredos is Ownable, Schema, Events, IERC721Receiver {
             PoolRegistry(lendingPoolAddress)._isLoanInDefault(
                 purchase.loanId,
                 purchase.poolId
-            ) != false,
+            ) == true,
             "Qredos.startLiquidation: loan is not defaulted!"
         );
         uint256 liquidationId = QredosStore(qredosStoreAddress)
@@ -303,7 +312,13 @@ contract Qredos is Ownable, Schema, Events, IERC721Receiver {
         external
         whenNotPaused
     {
+        PoolDetails memory Pool = PoolRegistryStore(
+            PoolRegistry(lendingPoolAddress).poolRegistryStoreAddress()
+        ).getPoolByID(poolId);
+        require(msg.sender == Pool.creator, "caller should be pool creator!");
+        uint256 amountWithdrawable = PoolRegistry(lendingPoolAddress)._getPoolBalanceWithInterest(poolId);
         PoolRegistry(lendingPoolAddress).closePool(poolId, reciever);
+        emit PoolClosed(poolId, amountWithdrawable);
     }
 
     /////////////////////////
