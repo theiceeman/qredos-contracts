@@ -4,7 +4,7 @@ const { parseEther } = require("ethers/lib/utils");
 const { ethers } = require("hardhat");
 
 describe("Qredos", function () {
-  let POOL_ID, PURCHASE_ID;
+  let POOL_ID, PURCHASE_ID, POOL_ID_2, PURCHASE_ID_2;
 
   // should emit loanRepaid event if successfull
   let lendingPoolBalanceBefore;
@@ -269,13 +269,11 @@ describe("Qredos", function () {
   });
 
   describe("repayLoan(part)", async function () {
-    it("should increase pool contract balance", async () => {
+    it("should increase pool contract balance & emit loanRepaid event", async () => {
+      BAYC.safeMint(deployer.address, 1);
       // create new pool for this test case
       let amount = parseEther("7000"); // 50000
-      let POOL_ID_2 = await WETH.connect(lender).approve(
-        qredos.address,
-        amount
-      );
+      await WETH.connect(lender).approve(qredos.address, amount);
       let createPoolTxn = await qredos
         .connect(lender)
         .createPool(amount, 3, 30, 7890000, 3, lender.address);
@@ -289,16 +287,86 @@ describe("Qredos", function () {
       let principalAmount = parseEther("3500");
 
       await WETH.connect(buyer).approve(qredos.address, downPaymentAmount);
-      let txn = await qredos
+      let PurchaseTxn = await qredos
         .connect(buyer)
         .purchaseNFT(
           BAYC.address,
           1,
           downPaymentAmount,
           principalAmount,
-          POOL_ID
+          POOL_ID_2
         );
-      let result = await txn.wait();
+      let PurchaseResult = await PurchaseTxn.wait();
+
+      let PurchaseCreatedEvent = PurchaseResult.events?.filter((x) => {
+        return x.event == "PurchaseCreated";
+      });
+      PURCHASE_ID_2 = PurchaseCreatedEvent[0].args.purchaseId;
+      // transfer token to oracle
+      await BAYC["safeTransferFrom(address,address,uint256)"](
+        deployer.address,
+        qredos.address,
+        1
+      );
+
+      let _lendingPoolBalanceBefore = await WETH.balanceOf(
+        poolRegistry.address
+      );
+
+      // complete nft purchase
+      await qredos.connect(buyer).completeNFTPurchase(PURCHASE_ID_2);
+
+      // make part payment of purchase
+      let PART = BigNumber.from("1");
+      await WETH.connect(buyer).approve(qredos.address, principalAmount);
+      let repayLoanTxn = await qredos
+        .connect(buyer)
+        .repayLoan(PURCHASE_ID_2, PART, POOL_ID_2);
+      let repayLoanResult = await repayLoanTxn.wait();
+      expect(repayLoanResult).to.emit(qredos, "LoanRepaid");
+
+      let _lendingPoolBalanceAfter = await WETH.balanceOf(poolRegistry.address);
+      expect(_lendingPoolBalanceAfter).to.be.greaterThan(
+        _lendingPoolBalanceBefore
+      );
+    });
+
+    it("should set state for loan part payment", async () => {
+      let loanRepayment = await poolRegistryStore.getLoanRepaymentByLoanID(
+        1,
+        0
+      );
+      expect(loanRepayment?.isExists).to.be.equal(true);
+    });
+
+    it("should complete the part payments, then check if loan status is closed", async () => {
+      let PART = BigNumber.from("1");
+      let principalAmount = parseEther("3500");
+      let loan = await poolRegistryStore.getLoanByPoolID(POOL_ID_2, 1);
+      expect(loan.status).to.be.equal(0);
+
+      await WETH.connect(buyer).approve(qredos.address, principalAmount);
+      await qredos.connect(buyer).repayLoan(PURCHASE_ID_2, PART, POOL_ID_2);
+      await WETH.connect(buyer).approve(qredos.address, principalAmount);
+      await qredos.connect(buyer).repayLoan(PURCHASE_ID_2, PART, POOL_ID_2);
+
+      loan = await poolRegistryStore.getLoanByPoolID(POOL_ID_2, 1);
+      expect(loan.status).to.be.equal(1);
+    });
+  });
+
+  describe("claimNft", async function () {
+    it("should fail if invalid purchaseId", async () => {
+      let invalidPurchaseId = 10;
+      await expect(
+        qredos.connect(buyer).claimNft(invalidPurchaseId, POOL_ID_2)
+      ).to.be.revertedWith("No such record");
+    });
+    it("should emit NFTClaimed event if successfull", async () => {
+
+      let txn = await qredos.connect(buyer).claimNft(PURCHASE_ID_2, POOL_ID_2);
+      let reciept = await txn.wait();
+      expect(reciept).to.emit(qredos, "NFTClaimed");
     });
   });
 });

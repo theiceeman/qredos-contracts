@@ -146,13 +146,13 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
             PoolRegistryStore(poolRegistryStoreAddress)
                 .countLoanRepaymentsForLoan(loanId) == Pool.paymentCycle
         ) {
-        PoolRegistryStore(poolRegistryStoreAddress)._updateLoan(
-            loanId,
-            poolId,
-            Loan.borrower,
-            Loan.principal,
-            LoanStatus.CLOSED
-        );
+            PoolRegistryStore(poolRegistryStoreAddress)._updateLoan(
+                loanId,
+                poolId,
+                Loan.borrower,
+                Loan.principal,
+                LoanStatus.CLOSED
+            );
         }
         return loanRepaymentId;
     }
@@ -242,7 +242,13 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
         view
         returns (uint256)
     {
-        return Loans[poolId][loanId].principal / Pools[poolId].paymentCycle;
+        LoanDetails memory Loan = PoolRegistryStore(poolRegistryStoreAddress)
+            .getLoanByPoolID(poolId, loanId);
+
+        PoolDetails memory Pool = PoolRegistryStore(poolRegistryStoreAddress)
+            .getPoolByID(poolId);
+
+        return Loan.principal / Pool.paymentCycle;
     }
 
     function _isLoanInDefault(uint256 loanId, uint256 poolId)

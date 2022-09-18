@@ -142,7 +142,7 @@ contract Qredos is Ownable, Schema, Events, IERC721Receiver {
             purchaseId,
             purchase.loanId,
             purchase.poolId,
-            purchase.escrowAddress,
+            escrowAddress,
             purchase.tokenAddress,
             purchase.tokenId,
             PurchaseStatus.COMPLETED

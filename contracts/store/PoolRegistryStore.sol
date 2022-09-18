@@ -26,6 +26,17 @@ contract PoolRegistryStore is Ownable, Schema {
     // (loanId => noOfLoanRepayments)
     mapping(uint256 => uint256) public countLoanRepaymentsForLoan;
 
+    function getLoanRepaymentByLoanID(uint256 loanId, uint256 loanRepaymentiD)
+        external
+        view
+        returns (LoanRepaymentDetails memory)
+    {
+        require(
+            LoanRepayment[loanId][loanRepaymentiD].isExists,
+            "getLoanRepaymentByLoanID: No such record"
+        );
+        return LoanRepayment[loanId][loanRepaymentiD];
+    }
     function getLoanByPoolID(uint256 poolId, uint256 loanId)
         external
         view
@@ -52,7 +63,6 @@ contract PoolRegistryStore is Ownable, Schema {
         view
         returns (uint256)
     {
-        // console.log(Pools)
         require(Pools[poolId].isExists, "getCountLoansInPool: No such record");
         return countLoansInPool[poolId];
     }
@@ -155,7 +165,7 @@ contract PoolRegistryStore is Ownable, Schema {
         uint256 amount,
         LoanRepaymentType repaymentType
     ) external onlyOwner returns (uint256) {
-        uint256 loanRepayment = totalLoanRepayments;
+        uint256 loanRepayment = countLoanRepaymentsForLoan[loanId];
         LoanRepayment[loanId][loanRepayment] = LoanRepaymentDetails(
             loanId,
             amount,
