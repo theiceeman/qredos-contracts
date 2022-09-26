@@ -160,26 +160,25 @@ contract Qredos is Ownable, Schema, Events, IERC721Receiver {
     ) external whenNotPaused {
         PurchaseDetails memory purchase = QredosStore(qredosStoreAddress)
             .getPurchaseByID(msg.sender, purchaseId);
-        LoanDetails memory loan = PoolRegistryStore(
-            PoolRegistry(lendingPoolAddress).poolRegistryStoreAddress()
-        ).getLoanByPoolID(poolId, purchase.loanId);
         // check if payment has been paid previously
         if (repaymentType == LoanRepaymentType.FULL) {
+            uint256 fullPayment = PoolRegistry(lendingPoolAddress)
+                ._calcLoanFullPayment(purchase.loanId, poolId);
             IERC20(paymentTokenAddress).safeTransferFrom(
                 msg.sender,
                 address(this),
-                loan.principal
+                fullPayment
             );
             IERC20(paymentTokenAddress).approve(
                 lendingPoolAddress,
-                loan.principal
+                fullPayment
             );
             uint256 loanRepaymentId = IPoolRegistry(lendingPoolAddress)
-                .repayLoanFull(purchase.loanId, loan.principal, poolId);
+                .repayLoanFull(purchase.loanId, fullPayment, poolId);
             emit LoanRepaid(
                 loanRepaymentId,
                 purchase.loanId,
-                loan.principal,
+                fullPayment,
                 LoanRepaymentType.FULL
             );
         } else if (repaymentType == LoanRepaymentType.PART) {
@@ -192,14 +191,14 @@ contract Qredos is Ownable, Schema, Events, IERC721Receiver {
             );
             IERC20(paymentTokenAddress).approve(
                 lendingPoolAddress,
-                loan.principal
+                partPayment
             );
             uint256 loanRepaymentId = IPoolRegistry(lendingPoolAddress)
                 .repayLoanPart(purchase.loanId, partPayment, poolId);
             emit LoanRepaid(
                 loanRepaymentId,
                 purchase.loanId,
-                loan.principal,
+                partPayment,
                 LoanRepaymentType.PART
             );
         }
@@ -316,7 +315,8 @@ contract Qredos is Ownable, Schema, Events, IERC721Receiver {
             PoolRegistry(lendingPoolAddress).poolRegistryStoreAddress()
         ).getPoolByID(poolId);
         require(msg.sender == Pool.creator, "caller should be pool creator!");
-        uint256 amountWithdrawable = PoolRegistry(lendingPoolAddress)._getPoolBalanceWithInterest(poolId);
+        uint256 amountWithdrawable = PoolRegistry(lendingPoolAddress)
+            ._getPoolBalanceWithInterest(poolId);
         PoolRegistry(lendingPoolAddress).closePool(poolId, reciever);
         emit PoolClosed(poolId, amountWithdrawable);
     }

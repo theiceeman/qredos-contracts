@@ -33,7 +33,7 @@
     "compile": "npx hardhat compile",
     "test": "hardhat test --network localhost",
     "run": "npx hardhat run --network hardhat scripts/run.js",
-    "test:timelock": "hardhat test --network hardhat ./test/TimeLock-test.js",
+    "test:userflow": "hardhat test --network localhost ./test/userFlow.js",
     "deploy:localhost": "npx hardhat run --network localhost scripts/run.js"
   }
 }

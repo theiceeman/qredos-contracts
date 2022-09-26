@@ -15,6 +15,7 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
 
     IERC20 internal lendingToken;
     address public poolRegistryStoreAddress;
+    uint256 constant DEFAULT_FEE_PERCENT = 15; // default fee percentage
 
     constructor(address _lendingTokenAddress, address _PoolRegistryStoreAddress)
     {
@@ -260,7 +261,60 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
         PoolDetails memory Pool = PoolRegistryStore(poolRegistryStoreAddress)
             .getPoolByID(poolId);
 
-        return Loan.principal / Pool.paymentCycle;
+        if (_isLoanInDefault(loanId, poolId)) {
+            //  If user defaulted
+            return _partPaymentWithDefault(Loan, Pool);
+        } else {
+            // If user has not defaulted
+            return _partPaymentWithoutDefault(Loan, Pool);
+        }
+    }
+
+    function _partPaymentWithoutDefault(
+        LoanDetails memory Loan,
+        PoolDetails memory Pool
+    ) internal pure returns (uint256) {
+        uint256 interest = (Loan.principal * Pool.APR) / 100;
+        return (Loan.principal + interest) / Pool.paymentCycle;
+    }
+
+    function _partPaymentWithDefault(
+        LoanDetails memory Loan,
+        PoolDetails memory Pool
+    ) internal pure returns (uint256) {
+        uint256 partPayment = Loan.principal / Pool.paymentCycle;
+        uint256 defaultFeeAmount = (Loan.principal * DEFAULT_FEE_PERCENT) / 100;
+        uint256 interest = (Loan.principal * Pool.APR) / 100;
+        return partPayment + interest + defaultFeeAmount;
+    }
+
+    function _calcLoanFullPayment(uint256 loanId, uint256 poolId)
+        public
+        view
+        returns (uint256)
+    {
+        LoanDetails memory Loan = PoolRegistryStore(poolRegistryStoreAddress)
+            .getLoanByPoolID(poolId, loanId);
+
+        PoolDetails memory Pool = PoolRegistryStore(poolRegistryStoreAddress)
+            .getPoolByID(poolId);
+
+        // If user has not defaulted
+        if (block.timestamp < (Loan.createdAtTimestamp + Pool.durationInSecs)) {
+            return Loan.principal;
+        } else {
+            //  If user defaulted
+            return _fullPaymentWithDefault(Loan);
+        }
+    }
+
+    function _fullPaymentWithDefault(LoanDetails memory Loan)
+        internal
+        pure
+        returns (uint256)
+    {
+        uint256 defaultFeeAmount = (Loan.principal * DEFAULT_FEE_PERCENT) / 100;
+        return Loan.principal + defaultFeeAmount;
     }
 
     function _isLoanInDefault(uint256 loanId, uint256 poolId)
