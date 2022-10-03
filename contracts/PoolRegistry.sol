@@ -15,7 +15,7 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
 
     IERC20 internal lendingToken;
     address public poolRegistryStoreAddress;
-    uint256 constant DEFAULT_FEE_PERCENT = 15; // default fee percentage
+    uint256 public constant DEFAULT_FEE_PERCENT = 15; // default fee percentage
 
     constructor(address _lendingTokenAddress, address _PoolRegistryStoreAddress)
     {
@@ -273,7 +273,7 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
     function _partPaymentWithoutDefault(
         LoanDetails memory Loan,
         PoolDetails memory Pool
-    ) internal pure returns (uint256) {
+    ) public pure returns (uint256) {
         uint256 interest = (Loan.principal * Pool.APR) / 100;
         return (Loan.principal + interest) / Pool.paymentCycle;
     }
@@ -281,7 +281,7 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
     function _partPaymentWithDefault(
         LoanDetails memory Loan,
         PoolDetails memory Pool
-    ) internal pure returns (uint256) {
+    ) public pure returns (uint256) {
         uint256 partPayment = Loan.principal / Pool.paymentCycle;
         uint256 defaultFeeAmount = (Loan.principal * DEFAULT_FEE_PERCENT) / 100;
         uint256 interest = (Loan.principal * Pool.APR) / 100;
@@ -359,5 +359,11 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
             return false;
         }
         return true;
+    }
+
+    function _completeRefundBorrower(address borrowerAddress, uint256 amount)
+        public
+    {
+        lendingToken.safeTransfer(borrowerAddress, amount);
     }
 }

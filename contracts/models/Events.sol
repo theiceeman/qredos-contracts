@@ -53,4 +53,6 @@ abstract contract Events is Schema{
         address newOwner
     );
     event PaymentTokenAddressUpdated(address oldValue, address newValue);
+
+    event RefundBorrower(uint256 indexed purchaseId, address borrowerAddress, uint256 refundAmount);
 }

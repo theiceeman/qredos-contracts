@@ -93,14 +93,15 @@ contract QredosStore is Ownable, Schema, Events {
         );
     }
 
-    function _createLiquidation(uint256 purchaseId, uint256 discountAmount)
-        external
-        onlyOwner
-        returns (uint256)
-    {
+    function _createLiquidation(
+        uint256 purchaseId,
+        uint256 discountAmount,
+        uint256 currentNftPrice
+    ) external onlyOwner returns (uint256) {
         uint256 liquidations = countLiquidation;
         Liquidation[liquidations] = LiquidationDetails(
             purchaseId,
+            currentNftPrice,
             discountAmount,
             LiquidationStatus.OPEN,
             true
@@ -113,10 +114,12 @@ contract QredosStore is Ownable, Schema, Events {
         uint256 purchaseId,
         uint256 discountAmount,
         uint256 liquidationId,
-        LiquidationStatus status
+        LiquidationStatus status,
+        uint256 currentNftPrice
     ) external onlyOwner {
         Liquidation[liquidationId] = LiquidationDetails(
             purchaseId,
+            currentNftPrice,
             discountAmount,
             status,
             true

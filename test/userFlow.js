@@ -150,6 +150,169 @@ describe("Qredos", function () {
         formatEther(poolBalanceAfter) - formatEther(poolBalanceBefore)
       ).to.be.equal(700);
     });
+
+    it("after liquidation: QREDOS COLLECTS 1150 (MONEY LENT + DEFAULT FEE)", async () => {
+      let downPaymentAmount = parseEther("1000");
+      let principal = parseEther("1000");
+      let tokenId = 2;
+      BAYC.safeMint(deployer.address, tokenId);
+      // purchase nft
+      let PURCHASE_ID = await purchaseNFT(
+        downPaymentAmount,
+        principal,
+        tokenId,
+        POOL_ID
+      );
+      // complete nft purchase
+      await BAYC["safeTransferFrom(address,address,uint256)"](
+        deployer.address,
+        qredos.address,
+        tokenId
+      );
+      await qredos.connect(buyer).completeNFTPurchase(PURCHASE_ID);
+      let poolBalanceBefore = await WETH.balanceOf(poolRegistry.address);
+
+      // one month period ends
+      await increaseTimeTo((await latestTime()) + duration.weeks(5));
+
+      let liquidationAmount = parseEther("1150");
+      let currentNftPrice = parseEther("2000");
+      await WETH.connect(liquidator).approve(qredos.address, liquidationAmount);
+      let LIQUIDATION_ID = await startLiquidation(
+        liquidationAmount,
+        PURCHASE_ID,
+        currentNftPrice,buyer.address
+      );
+      // complete liquidation
+      await qredos
+        .connect(liquidator)
+        .completeLiquidation(LIQUIDATION_ID, buyer.address);
+
+      let poolBalanceAfter = await WETH.balanceOf(poolRegistry.address);
+
+      expect(
+        formatEther(poolBalanceAfter) - formatEther(poolBalanceBefore)
+      ).to.be.equal(1150);
+    });
+  });
+
+  describe("Default on second month", function () {
+    it("after liquidation: qredos collects 1200 (principal + default fee + interest)", async () => {
+      let downPaymentAmount = parseEther("1000");
+      let principal = parseEther("1000");
+      let tokenId = 3;
+      BAYC.safeMint(deployer.address, tokenId);
+      // purchase nft
+      let PURCHASE_ID = await purchaseNFT(
+        downPaymentAmount,
+        principal,
+        tokenId,
+        POOL_ID
+      );
+      // complete nft purchase
+      await BAYC["safeTransferFrom(address,address,uint256)"](
+        deployer.address,
+        qredos.address,
+        tokenId
+      );
+      await qredos.connect(buyer).completeNFTPurchase(PURCHASE_ID);
+
+      // first part payment
+      let PART = BigNumber.from("1");
+      await WETH.connect(buyer).approve(qredos.address, principal);
+      await qredos.connect(buyer).repayLoan(PURCHASE_ID, PART, POOL_ID);
+
+      // forward time to second month
+      await increaseTimeTo((await latestTime()) + duration.weeks(9));
+
+      let poolBalanceBefore = await WETH.balanceOf(poolRegistry.address);
+
+      // LIQUIDATE NFT
+      let liquidationAmount = parseEther("2050");
+      let currentNftPrice = parseEther("2000");
+      await WETH.connect(liquidator).approve(qredos.address, liquidationAmount);
+      let LIQUIDATION_ID = await startLiquidation(
+        liquidationAmount,
+        PURCHASE_ID,
+        currentNftPrice,
+        buyer.address
+      );
+      // complete liquidation
+      await qredos
+        .connect(liquidator)
+        .completeLiquidation(LIQUIDATION_ID, buyer.address);
+
+      let poolBalanceAfter = await WETH.balanceOf(poolRegistry.address);
+
+      let buyerBalanceBefore = await WETH.balanceOf(buyer.address);
+      await qredos.connect(buyer).refundBorrower(PURCHASE_ID, LIQUIDATION_ID);
+      let buyerBalanceAfter = await WETH.balanceOf(buyer.address);
+
+      // we get 2050 weth when liquidation is completed
+      expect(
+        formatEther(poolBalanceAfter) - formatEther(poolBalanceBefore)
+      ).to.be.equal(2050);
+      // user gets their 1375 weth
+      expect(
+        formatEther(buyerBalanceAfter) - formatEther(buyerBalanceBefore)
+      ).to.be.equal(1375);
+    });
+  });
+
+  describe("REDUCED NFT PRICE / VALUE BELOW 10%", function () {
+    it("nft is liquidated before first month is completed", async () => {
+      let downPaymentAmount = parseEther("1000");
+      let principal = parseEther("1000");
+      let tokenId = 4;
+      BAYC.safeMint(deployer.address, tokenId);
+      // purchase nft
+      let PURCHASE_ID = await purchaseNFT(
+        downPaymentAmount,
+        principal,
+        tokenId,
+        POOL_ID
+      );
+      // complete nft purchase
+      await BAYC["safeTransferFrom(address,address,uint256)"](
+        deployer.address,
+        qredos.address,
+        tokenId
+      );
+      await qredos.connect(buyer).completeNFTPurchase(PURCHASE_ID);
+
+      let poolBalanceBefore = await WETH.balanceOf(poolRegistry.address);
+
+      // LIQUIDATE NFT
+      let liquidationAmount = parseEther("2050");
+      let currentNftPrice = parseEther("1800");
+      await WETH.connect(liquidator).approve(qredos.address, liquidationAmount);
+      let LIQUIDATION_ID = await startLiquidation(
+        liquidationAmount,
+        PURCHASE_ID,
+        currentNftPrice,
+        buyer.address
+      );
+      // complete liquidation
+      await qredos
+        .connect(liquidator)
+        .completeLiquidation(LIQUIDATION_ID, buyer.address);
+
+      let poolBalanceAfter = await WETH.balanceOf(poolRegistry.address);
+
+      let buyerBalanceBefore = await WETH.balanceOf(buyer.address);
+
+      await qredos.connect(buyer).refundBorrower(PURCHASE_ID, LIQUIDATION_ID);
+      let buyerBalanceAfter = await WETH.balanceOf(buyer.address);
+
+      // we get 2050 weth when liquidation is completed
+      expect(
+        formatEther(poolBalanceAfter) - formatEther(poolBalanceBefore)
+      ).to.be.equal(2050);
+      // user gets their 1375 weth
+      expect(
+        formatEther(buyerBalanceAfter) - formatEther(buyerBalanceBefore)
+      ).to.be.equal(800);
+    });
   });
 });
 
@@ -163,4 +326,26 @@ async function purchaseNFT(downPaymentAmount, principal, tokenId, POOL_ID) {
     return x.event == "PurchaseCreated";
   });
   return PurchaseCreatedEvent[0].args.purchaseId;
+}
+
+async function startLiquidation(
+  discountAmount,
+  PURCHASE_ID,
+  currentNftPrice,
+  borrowerAddress
+) {
+  let txn = await qredos
+    .connect(deployer)
+    .startLiquidation(
+      PURCHASE_ID,
+      discountAmount,
+      currentNftPrice,
+      borrowerAddress
+    );
+  let reciept = await txn.wait();
+
+  let event = reciept.events?.filter((x) => {
+    return x.event == "StartLiquidation";
+  });
+  return (LIQUIDATION_ID = event[0].args.liquidationId);
 }

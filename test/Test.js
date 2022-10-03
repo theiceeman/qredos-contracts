@@ -435,40 +435,59 @@ describe("Qredos", function () {
     });
     it("should fail if caller isnt owner", async () => {
       let invalidPurchaseId = 10;
+      let currentNftPrice = parseEther("2000");
       let discountAmount = parseEther("3000"); //  from 3500
       await expect(
         qredos
           .connect(buyer)
-          .startLiquidation(invalidPurchaseId, discountAmount, buyer.address)
+          .startLiquidation(
+            invalidPurchaseId,
+            discountAmount,
+            currentNftPrice,
+            buyer.address
+          )
       ).to.be.revertedWith("Ownable: caller is not the owner");
     });
     it("should fail for invalid purchaseId", async () => {
       let invalidPurchaseId = 10;
+      let currentNftPrice = parseEther("2000");
       let discountAmount = parseEther("3000"); //  from 3500
       await expect(
         qredos
           .connect(deployer)
-          .startLiquidation(invalidPurchaseId, discountAmount, buyer.address)
+          .startLiquidation(
+            invalidPurchaseId,
+            discountAmount,
+            currentNftPrice,
+            buyer.address
+          )
       ).to.be.revertedWith("No such record");
     });
-
-    it("should fail if loan isnt defaulted", async () => {
-      let discountAmount = parseEther("3000"); //  from 3500
-      await expect(
-        qredos
-          .connect(deployer)
-          .startLiquidation(PURCHASE_ID_3, discountAmount, buyer.address)
-      ).to.be.revertedWith("Qredos.startLiquidation: loan is not defaulted!");
-    });
+    // Does not have to be defaulted
+    // it("should fail if loan isnt defaulted", async () => {
+    //   let discountAmount = parseEther("3000"); //  from 3500
+    //   let currentNftPrice = parseEther("2000");
+    //   await expect(
+    //     qredos
+    //       .connect(deployer)
+    //       .startLiquidation(PURCHASE_ID_3, discountAmount, currentNftPrice,buyer.address)
+    //   ).to.be.revertedWith("Qredos.startLiquidation: loan is not defaulted!");
+    // });
     it("should emit StartLiquidation event if successfull", async () => {
       let pool = await poolRegistryStore.getPoolByID(POOL_ID_3);
       await increaseTimeTo(
         (await latestTime()) + Number(pool.durationInSecs) + duration.hours(2)
       );
       let discountAmount = parseEther("3000"); //  from 3500
+      let currentNftPrice = parseEther("3000");
       let txn = await qredos
         .connect(deployer)
-        .startLiquidation(PURCHASE_ID_3, discountAmount, buyer.address);
+        .startLiquidation(
+          PURCHASE_ID_3,
+          discountAmount,
+          currentNftPrice,
+          buyer.address
+        );
       let reciept = await txn.wait();
 
       let event = reciept.events?.filter((x) => {
@@ -495,7 +514,7 @@ describe("Qredos", function () {
     });
     it("should emit CompleteLiquidation event if successfull", async () => {
       let liquidation = await qredosStore.getLiquidationByID(LIQUIDATION_ID);
-      let oracleBalanceBefore = await WETH.balanceOf(qredos.address);
+      let poolBalanceBefore = await WETH.balanceOf(poolRegistry.address);
       await WETH.connect(liquidator).approve(
         qredos.address,
         liquidation.discountAmount
@@ -504,11 +523,12 @@ describe("Qredos", function () {
         .connect(liquidator)
         .completeLiquidation(LIQUIDATION_ID, buyer.address);
       let reciept = await txn.wait();
-      expect(reciept).to.emit(qredos, "StartLiquidation");
+      // console.log(reciept.events)
+      expect(reciept).to.emit(qredos, "CompleteLiquidation");
 
       // should increase oracle balance if successfull
-      let oracleBalanceAfter = await WETH.balanceOf(qredos.address);
-      expect(oracleBalanceBefore).to.be.lessThan(oracleBalanceAfter);
+      let poolBalanceAfter = await WETH.balanceOf(poolRegistry.address);
+      expect(poolBalanceBefore).to.be.lessThan(poolBalanceAfter);
     });
     it("should update liquidation state if successfull", async () => {
       let liquidation = await qredosStore.getLiquidationByID(LIQUIDATION_ID);
@@ -545,7 +565,7 @@ describe("Qredos", function () {
   });
 
   describe("whenNotPaused", async function () {
-    it("should revert when paused", async ()=>{
+    it("should revert when paused", async () => {
       let downPaymentAmount = parseEther("100000");
       let invalidPrincipal = parseEther("100000");
 
@@ -561,10 +581,7 @@ describe("Qredos", function () {
             invalidPrincipal,
             POOL_ID
           )
-      ).to.be.revertedWith(
-        "Qredos: currently paused!"
-      );
-
-    })
-  })
+      ).to.be.revertedWith("Qredos: currently paused!");
+    });
+  });
 });

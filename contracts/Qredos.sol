@@ -227,19 +227,15 @@ contract Qredos is Ownable, Schema, Events, IERC721Receiver {
     function startLiquidation(
         uint256 purchaseId,
         uint256 discountAmount,
+        uint256 currentNftPrice,
         address borrowerAddress
     ) external onlyOwner {
-        PurchaseDetails memory purchase = QredosStore(qredosStoreAddress)
-            .getPurchaseByID(borrowerAddress, purchaseId);
-        require(
-            PoolRegistry(lendingPoolAddress)._isLoanInDefault(
-                purchase.loanId,
-                purchase.poolId
-            ) == true,
-            "Qredos.startLiquidation: loan is not defaulted!"
+        QredosStore(qredosStoreAddress).getPurchaseByID(
+            borrowerAddress,
+            purchaseId
         );
         uint256 liquidationId = QredosStore(qredosStoreAddress)
-            ._createLiquidation(purchaseId, discountAmount);
+            ._createLiquidation(purchaseId, discountAmount, currentNftPrice);
         emit StartLiquidation(purchaseId, discountAmount, liquidationId);
     }
 
@@ -256,6 +252,10 @@ contract Qredos is Ownable, Schema, Events, IERC721Receiver {
             address(this),
             liquidation.discountAmount
         );
+        IERC20(paymentTokenAddress).safeTransfer(
+            lendingPoolAddress,
+            liquidation.discountAmount
+        );
         require(
             Escrow(purchase.escrowAddress).claim(msg.sender),
             "Qredos: liquidation reverted!"
@@ -264,13 +264,45 @@ contract Qredos is Ownable, Schema, Events, IERC721Receiver {
             liquidation.purchaseId,
             liquidation.discountAmount,
             liquidationId,
-            LiquidationStatus.COMPLETED
+            LiquidationStatus.COMPLETED,
+            liquidation.currentNftPrice
+        );
+        QredosStore(qredosStoreAddress)._updatePurchase(
+            borrowerAddress,
+            liquidation.purchaseId,
+            purchase.loanId,
+            purchase.poolId,
+            purchase.escrowAddress,
+            purchase.tokenAddress,
+            purchase.tokenId,
+            PurchaseStatus.LIQUIDATED
         );
         emit CompleteLiquidation(
             liquidation.purchaseId,
             liquidationId,
             msg.sender
         );
+    }
+
+    function refundBorrower(uint256 purchaseId, uint256 liquidationId)
+        external
+        whenNotPaused
+    {
+        PurchaseDetails memory purchase = QredosStore(qredosStoreAddress)
+            .getPurchaseByID(msg.sender, purchaseId);
+        require(
+            purchase.status == PurchaseStatus.LIQUIDATED,
+            "Qredos: cant refund borrower!"
+        );
+        uint256 refundAmount = _calcBorrowerRefundAmount(
+            purchaseId,
+            liquidationId
+        );
+        PoolRegistry(lendingPoolAddress)._completeRefundBorrower(
+            msg.sender,
+            refundAmount
+        );
+        emit RefundBorrower(purchaseId, msg.sender, refundAmount);
     }
 
     function createPool(
@@ -351,6 +383,70 @@ contract Qredos is Ownable, Schema, Events, IERC721Receiver {
             return true;
         } else {
             return false;
+        }
+    }
+
+    function _calcBorrowerRefundAmount(
+        uint256 purchaseId,
+        uint256 liquidationId
+    ) public view returns (uint256) {
+        // (DOWN PAYMENT + INSTALLMENTs PAID - DEFAULT FEE)
+
+        PurchaseDetails memory Purchase = QredosStore(qredosStoreAddress)
+            .getPurchaseByID(msg.sender, purchaseId);
+
+        LoanDetails memory Loan = PoolRegistryStore(
+            PoolRegistry(lendingPoolAddress).poolRegistryStoreAddress()
+        ).getLoanByPoolID(Purchase.poolId, Purchase.loanId);
+
+        PoolDetails memory Pool = PoolRegistryStore(
+            PoolRegistry(lendingPoolAddress).poolRegistryStoreAddress()
+        ).getPoolByID(Loan.poolId);
+
+        LiquidationDetails memory Liquidation = QredosStore(qredosStoreAddress)
+            .getLiquidationByID(liquidationId);
+
+        uint256 downPayment = Loan.principal;
+        uint256 partPayment = PoolRegistry(lendingPoolAddress)
+            ._partPaymentWithoutDefault(Loan, Pool);
+
+        // uint256 partPayment = PoolRegistry(lendingPoolAddress)
+        //     ._calcLoanPartPayment(Purchase.loanId, Loan.poolId);
+
+        uint256 countRepaymentsMade = PoolRegistryStore(
+            PoolRegistry(lendingPoolAddress).poolRegistryStoreAddress()
+        ).countLoanRepaymentsForLoan(Purchase.loanId);
+
+        uint256 installmentPaid = partPayment * countRepaymentsMade;
+        // uint256 defaultFeeAmount = (Loan.principal *
+        //     PoolRegistry(lendingPoolAddress).DEFAULT_FEE_PERCENT()) / 100;
+
+        uint256 defaultFeeAmount;
+        if (
+            PoolRegistry(lendingPoolAddress)._isLoanInDefault(
+                Purchase.loanId,
+                Purchase.poolId
+            )
+        ) {
+            //  If user defaulted
+            defaultFeeAmount =
+                (Loan.principal *
+                    PoolRegistry(lendingPoolAddress).DEFAULT_FEE_PERCENT()) /
+                100;
+        } else {
+            // If user has not defaulted
+            defaultFeeAmount = 0;
+        }
+
+        if (Liquidation.currentNftPrice < (Loan.principal * 2)) {
+            uint256 nftPriceDifference = (Loan.principal * 2) -
+                Liquidation.currentNftPrice;
+
+            return
+                (downPayment + installmentPaid) -
+                (defaultFeeAmount + nftPriceDifference);
+        } else {
+            return (downPayment + installmentPaid) - defaultFeeAmount;
         }
     }
 

@@ -47,7 +47,9 @@ struct LoanRepaymentDetails {
     enum PurchaseStatus {
         OPEN,
         COMPLETED,
-        FAILED
+        FAILED,
+        LIQUIDATED,
+        USER_REFUNDED
     }
     enum LiquidationStatus {
         OPEN,
@@ -66,6 +68,7 @@ struct LoanRepaymentDetails {
 
     struct LiquidationDetails {
         uint256 purchaseId;
+        uint256 currentNftPrice;
         uint256 discountAmount;
         LiquidationStatus status;
         bool isExists;
