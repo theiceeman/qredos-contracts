@@ -2,12 +2,13 @@
 pragma solidity 0.8.1;
 import "./Schema.sol";
 
-abstract contract Events is Schema{
+abstract contract Events is Schema {
     // PoolRegistry.sol
     event PoolRegistryContractDeployed();
     event PoolCreated(uint256 indexed poolId, address indexed creator);
     event LoanCreated(
         uint256 indexed loanId,
+        uint256 indexed poolId,
         address indexed borrower,
         uint256 principal
     );
@@ -29,15 +30,8 @@ abstract contract Events is Schema{
     event LendingPoolAddressUpdated(address oldValue, address newValue);
     event PurchaseCreated(
         address indexed userAddress,
-        uint256 indexed poolId,
-        uint256 loanId,
         uint256 indexed purchaseId,
-        uint256 tokenId,
-        address tokenAddress,
         uint256 downPayment,
-        uint256 principal,
-        uint256 apr,
-        uint256 duration,
         uint16 downPaymentPercentage
     );
     event PurchaseCompleted(uint256 indexed purchaseId);
@@ -54,5 +48,9 @@ abstract contract Events is Schema{
     );
     event PaymentTokenAddressUpdated(address oldValue, address newValue);
 
-    event RefundBorrower(uint256 indexed purchaseId, address borrowerAddress, uint256 refundAmount);
+    event RefundBorrower(
+        uint256 indexed purchaseId,
+        address borrowerAddress,
+        uint256 refundAmount
+    );
 }

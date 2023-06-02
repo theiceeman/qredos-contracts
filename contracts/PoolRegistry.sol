@@ -8,7 +8,6 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 import "./store/PoolRegistryStore.sol";
-import "hardhat/console.sol";
 
 contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
     using SafeERC20 for IERC20;
@@ -99,7 +98,7 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
         lendingToken.safeTransfer(msg.sender, principal);
         uint256 loanId = PoolRegistryStore(poolRegistryStoreAddress)
             ._createLoan(poolId, borrower, principal);
-        emit LoanCreated(loanId, borrower, principal);
+        emit LoanCreated(loanId,poolId, borrower, principal);
         return loanId;
     }
 

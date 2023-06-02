@@ -168,6 +168,8 @@ describe("Qredos", function () {
         );
       let result = await txn.wait();
 
+
+
       let PurchaseCreatedEvent = result.events?.filter((x) => {
         return x.event == "PurchaseCreated";
       });
@@ -175,6 +177,17 @@ describe("Qredos", function () {
 
       expect(result).to.emit(qredos, "PurchaseCreated");
     });
+
+    it("should emit LoanCreated event if successfull", async () => {
+
+      // Get all events emitted by the contract
+      const filter = {
+        address: poolRegistry.address
+      };
+      const events = await poolRegistry.queryFilter(filter);
+      // console.log(events);
+
+    })
   });
 
   describe("completeNFTPurchase", async function () {
