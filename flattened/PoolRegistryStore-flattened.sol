@@ -84,7 +84,7 @@ struct LoanRepaymentDetails {
 
 // File @openzeppelin/contracts/token/ERC20/IERC20.sol@v4.7.3
 
-
+// SPDX-License-Identifier: MIT
 // OpenZeppelin Contracts (last updated v4.6.0) (token/ERC20/IERC20.sol)
 
 pragma solidity ^0.8.0;
@@ -170,7 +170,7 @@ interface IERC20 {
 
 // File @openzeppelin/contracts/token/ERC20/extensions/draft-IERC20Permit.sol@v4.7.3
 
-
+// SPDX-License-Identifier: MIT
 // OpenZeppelin Contracts v4.4.1 (token/ERC20/extensions/draft-IERC20Permit.sol)
 
 pragma solidity ^0.8.0;
@@ -234,7 +234,7 @@ interface IERC20Permit {
 
 // File @openzeppelin/contracts/utils/Address.sol@v4.7.3
 
-
+// SPDX-License-Identifier: MIT
 // OpenZeppelin Contracts (last updated v4.7.0) (utils/Address.sol)
 
 pragma solidity ^0.8.1;
@@ -460,7 +460,7 @@ library Address {
 
 // File @openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol@v4.7.3
 
-
+// SPDX-License-Identifier: MIT
 // OpenZeppelin Contracts (last updated v4.7.0) (token/ERC20/utils/SafeERC20.sol)
 
 pragma solidity ^0.8.0;
@@ -578,7 +578,7 @@ library SafeERC20 {
 
 // File @openzeppelin/contracts/utils/Context.sol@v4.7.3
 
-
+// SPDX-License-Identifier: MIT
 // OpenZeppelin Contracts v4.4.1 (utils/Context.sol)
 
 pragma solidity ^0.8.0;
@@ -606,7 +606,7 @@ abstract contract Context {
 
 // File @openzeppelin/contracts/access/Ownable.sol@v4.7.3
 
-
+// SPDX-License-Identifier: MIT
 // OpenZeppelin Contracts (last updated v4.7.0) (access/Ownable.sol)
 
 pragma solidity ^0.8.0;
@@ -691,7 +691,7 @@ abstract contract Ownable is Context {
 
 // File hardhat/console.sol@v2.10.1
 
-
+// SPDX-License-Identifier: MIT
 pragma solidity >= 0.4.22 <0.9.0;
 
 library console {
@@ -2227,7 +2227,7 @@ library console {
 
 // File contracts/store/PoolRegistryStore.sol
 
-
+// SPDX-License-Identifier: MIT
 pragma solidity 0.8.1;
 
 

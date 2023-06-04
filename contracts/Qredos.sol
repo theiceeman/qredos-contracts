@@ -4,24 +4,19 @@ import "./models/Schema.sol";
 import "./models/Events.sol";
 
 import "./interfaces/IPoolRegistry.sol";
-import "@openzeppelin/contracts/interfaces/IERC20.sol";
 import "@openzeppelin/contracts/interfaces/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "./PoolRegistry.sol";
 import "./Escrow.sol";
 import "./store/PoolRegistryStore.sol";
 import "./store/QredosStore.sol";
+import "hardhat/console.sol";
 
 contract Qredos is Ownable, Schema, Events, IERC721Receiver {
-    using SafeERC20 for IERC20;
-
-    address public paymentTokenAddress;
-    address public lendingPoolAddress;
-
+    address payable public lendingPoolAddress;
     address public qredosStoreAddress;
     bool public isPaused;
 
@@ -31,16 +26,14 @@ contract Qredos is Ownable, Schema, Events, IERC721Receiver {
     }
 
     constructor(
-        address _paymentTokenAddress,
-        address _lendingPoolAddress,
+        address payable _lendingPoolAddress,
         address _QredosStoreAddress
     ) {
-        paymentTokenAddress = _paymentTokenAddress;
         lendingPoolAddress = _lendingPoolAddress;
 
         qredosStoreAddress = _QredosStoreAddress;
 
-        emit QredosContractDeployed(_paymentTokenAddress, _lendingPoolAddress);
+        emit QredosContractDeployed(_lendingPoolAddress);
     }
 
     function onERC721Received(
@@ -58,7 +51,7 @@ contract Qredos is Ownable, Schema, Events, IERC721Receiver {
         uint256 downPaymentAmount,
         uint256 principal,
         uint256 poolId
-    ) external whenNotPaused {
+    ) external payable whenNotPaused {
         require(
             tokenAddress != address(0x0),
             "Qredos.purchaseNFT: address is zero address!"
@@ -76,11 +69,8 @@ contract Qredos is Ownable, Schema, Events, IERC721Receiver {
                 principal,
             "Qredos.purchaseNFT: Selected pool can't fund purchase!"
         );
-        IERC20(paymentTokenAddress).safeTransferFrom(
-            msg.sender,
-            address(this),
-            downPaymentAmount
-        );
+        require(msg.value >= downPaymentAmount, "Incorrect ether amount!");
+
         uint256 loanId = IPoolRegistry(lendingPoolAddress).requestLoan(
             principal,
             poolId,
@@ -88,13 +78,16 @@ contract Qredos is Ownable, Schema, Events, IERC721Receiver {
         );
 
         require(
-            IERC20(paymentTokenAddress).balanceOf(address(this)) >=
-                (downPaymentAmount + principal),
+            address(this).balance >= (downPaymentAmount + principal),
             "Qredos.purchaseNFT: Insufficient funds!"
         );
-        /* 
-            move funds to secure vault.
-         */
+
+        // move funds to QREDOS EOA address.
+        (bool success, ) = address(owner()).call{
+            value: (downPaymentAmount + principal)
+        }("");
+        require(success, "Failed ether transfer to EOA");
+
         uint256 purchaseId = QredosStore(qredosStoreAddress)._createPurchase(
             msg.sender,
             loanId,
@@ -149,22 +142,21 @@ contract Qredos is Ownable, Schema, Events, IERC721Receiver {
         uint256 purchaseId,
         LoanRepaymentType repaymentType,
         uint256 poolId
-    ) external whenNotPaused {
+    ) external payable whenNotPaused {
         PurchaseDetails memory purchase = QredosStore(qredosStoreAddress)
             .getPurchaseByID(msg.sender, purchaseId);
         // check if payment has been paid previously
         if (repaymentType == LoanRepaymentType.FULL) {
             uint256 fullPayment = PoolRegistry(lendingPoolAddress)
                 ._calcLoanFullPayment(purchase.loanId, poolId);
-            IERC20(paymentTokenAddress).safeTransferFrom(
-                msg.sender,
-                address(this),
-                fullPayment
-            );
-            IERC20(paymentTokenAddress).approve(
-                lendingPoolAddress,
-                fullPayment
-            );
+
+            require(msg.value >= fullPayment, "Insufficient ether sent!");
+
+            (bool success, ) = address(lendingPoolAddress).call{
+                value: fullPayment
+            }("");
+            require(success, "Failed ether transfer to pool");
+
             uint256 loanRepaymentId = IPoolRegistry(lendingPoolAddress)
                 .repayLoanFull(purchase.loanId, fullPayment, poolId);
             emit LoanRepaid(
@@ -176,15 +168,14 @@ contract Qredos is Ownable, Schema, Events, IERC721Receiver {
         } else if (repaymentType == LoanRepaymentType.PART) {
             uint256 partPayment = PoolRegistry(lendingPoolAddress)
                 ._calcLoanPartPayment(purchase.loanId, poolId);
-            IERC20(paymentTokenAddress).safeTransferFrom(
-                msg.sender,
-                address(this),
-                partPayment
-            );
-            IERC20(paymentTokenAddress).approve(
-                lendingPoolAddress,
-                partPayment
-            );
+
+            require(msg.value >= partPayment, "Insufficient ether sent!");
+
+            (bool success, ) = address(lendingPoolAddress).call{
+                value: partPayment
+            }("");
+            require(success, "Failed ether transfer to pool");
+
             uint256 loanRepaymentId = IPoolRegistry(lendingPoolAddress)
                 .repayLoanPart(purchase.loanId, partPayment, poolId);
             emit LoanRepaid(
@@ -234,20 +225,22 @@ contract Qredos is Ownable, Schema, Events, IERC721Receiver {
     function completeLiquidation(
         uint256 liquidationId,
         address borrowerAddress
-    ) external whenNotPaused {
+    ) external payable whenNotPaused {
         LiquidationDetails memory liquidation = QredosStore(qredosStoreAddress)
             .getLiquidationByID(liquidationId);
         PurchaseDetails memory purchase = QredosStore(qredosStoreAddress)
             .getPurchaseByID(borrowerAddress, liquidation.purchaseId);
-        IERC20(paymentTokenAddress).safeTransferFrom(
-            msg.sender,
-            address(this),
-            liquidation.discountAmount
+
+        require(
+            msg.value >= liquidation.discountAmount,
+            "Insufficient ether sent!"
         );
-        IERC20(paymentTokenAddress).safeTransfer(
-            lendingPoolAddress,
-            liquidation.discountAmount
-        );
+
+        (bool success, ) = address(lendingPoolAddress).call{
+            value: liquidation.discountAmount
+        }("");
+        require(success, "Failed ether transfer to pool");
+
         require(
             Escrow(purchase.escrowAddress).claim(msg.sender),
             "Qredos: liquidation reverted!"
@@ -304,13 +297,14 @@ contract Qredos is Ownable, Schema, Events, IERC721Receiver {
         uint256 _durationInSecs,
         uint16 _durationInMonths,
         address _creator
-    ) external whenNotPaused {
-        IERC20(paymentTokenAddress).safeTransferFrom(
-            msg.sender,
-            address(this),
-            _amount
-        );
-        IERC20(paymentTokenAddress).approve(lendingPoolAddress, _amount);
+    ) external payable whenNotPaused {
+        require(msg.value >= _amount, "Insufficient ether sent!");
+
+        (bool success, bytes memory data) = lendingPoolAddress.call{
+            value: _amount
+        }("");
+        require(success, "Failed ether transfer to pool");
+
         PoolRegistry(lendingPoolAddress).createPool(
             _amount,
             _paymentCycle,
@@ -321,13 +315,15 @@ contract Qredos is Ownable, Schema, Events, IERC721Receiver {
         );
     }
 
-    function fundPool(uint256 poolId, uint256 amount) external whenNotPaused {
-        IERC20(paymentTokenAddress).safeTransferFrom(
-            msg.sender,
-            address(this),
-            amount
-        );
-        IERC20(paymentTokenAddress).approve(lendingPoolAddress, amount);
+    function fundPool(
+        uint256 poolId,
+        uint256 amount
+    ) external payable whenNotPaused {
+        require(msg.value >= amount, "Insufficient ether sent!");
+
+        (bool success, ) = address(lendingPoolAddress).call{value: amount}("");
+        require(success, "Failed ether transfer to pool");
+
         PoolRegistry(lendingPoolAddress).fundPool(poolId, amount);
     }
 
@@ -358,10 +354,10 @@ contract Qredos is Ownable, Schema, Events, IERC721Receiver {
     }
 
     function forwardAllFunds() external onlyOwner {
-        IERC20(paymentTokenAddress).transfer(
-            owner(),
-            IERC20(paymentTokenAddress).balanceOf(address(this))
+        (bool success, ) = address(owner()).call{value: address(this).balance}(
+            ""
         );
+        require(success, "Failed ether transfer");
     }
 
     function _calcDownPayment(
@@ -448,4 +444,6 @@ contract Qredos is Ownable, Schema, Events, IERC721Receiver {
     function getPoolBalance(uint256 poolId) external view returns (uint256) {
         return PoolRegistry(lendingPoolAddress)._getPoolBalance(poolId);
     }
+
+    receive() external payable virtual {}
 }

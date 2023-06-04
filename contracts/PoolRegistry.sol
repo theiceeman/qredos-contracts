@@ -3,22 +3,15 @@ pragma solidity 0.8.1;
 import "./models/Schema.sol";
 import "./models/Events.sol";
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 import "./store/PoolRegistryStore.sol";
 
 contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
-    using SafeERC20 for IERC20;
-
-    IERC20 internal lendingToken;
     address public poolRegistryStoreAddress;
     uint256 public constant DEFAULT_FEE_PERCENT = 15; // default fee percentage
 
-    constructor(address _lendingTokenAddress, address _PoolRegistryStoreAddress)
-    {
-        lendingToken = IERC20(_lendingTokenAddress);
+    constructor(address _PoolRegistryStoreAddress) {
         poolRegistryStoreAddress = _PoolRegistryStoreAddress;
         emit PoolRegistryContractDeployed();
     }
@@ -40,7 +33,6 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
             "Pool.createPool: Invalid Input!"
         );
         require(_creator != address(0x0), "Pool.createPool: Invalid address!");
-        lendingToken.safeTransferFrom(msg.sender, address(this), _amount);
         uint256 poolId = PoolRegistryStore(poolRegistryStoreAddress)
             ._createPool(
                 _amount,
@@ -55,12 +47,9 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
     }
 
     // Get pools that can cover principal
-    function getValidPools(uint256 principal)
-        external
-        view
-        onlyOwner
-        returns (uint256[] memory)
-    {
+    function getValidPools(
+        uint256 principal
+    ) external view onlyOwner returns (uint256[] memory) {
         require(principal > 0, "Pool.getValidPools: Invalid input!");
         uint256[] memory validPools;
         uint256 count = 0;
@@ -95,10 +84,13 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
             borrower != address(0x0),
             "Pool.requestLoan: Invalid borrower!"
         );
-        lendingToken.safeTransfer(msg.sender, principal);
+
+        (bool success, ) = address(msg.sender).call{value: principal}("");
+        require(success, "Failed to transfer amount");
+
         uint256 loanId = PoolRegistryStore(poolRegistryStoreAddress)
             ._createLoan(poolId, borrower, principal);
-        emit LoanCreated(loanId,poolId, borrower, principal);
+        emit LoanCreated(loanId, poolId, borrower, principal);
         return loanId;
     }
 
@@ -115,7 +107,6 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
             amount == Loan.principal,
             "Pool.repayLoanFull: Invalid amount!"
         );
-        lendingToken.safeTransferFrom(msg.sender, address(this), amount);
         uint256 loanRepaymentId = PoolRegistryStore(poolRegistryStoreAddress)
             ._createLoanRepayment(loanId, amount, LoanRepaymentType.FULL);
         PoolRegistryStore(poolRegistryStoreAddress)._updateLoan(
@@ -142,7 +133,6 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
             amount == _calcLoanPartPayment(loanId, poolId),
             "Pool.repayLoanPart: Invalid amount!"
         );
-        lendingToken.safeTransferFrom(msg.sender, address(this), amount);
 
         uint256 loanRepaymentId = PoolRegistryStore(poolRegistryStoreAddress)
             ._createLoanRepayment(loanId, amount, LoanRepaymentType.PART);
@@ -173,7 +163,6 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
             "Pool.fundPool: Pool is closed!"
         );
         require(amount > 0, "Pool: Invalid input!");
-        lendingToken.safeTransferFrom(msg.sender, address(this), amount);
         PoolRegistryStore(poolRegistryStoreAddress)._updatePool(
             poolId,
             Pool.amount + amount,
@@ -201,18 +190,20 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
             Pool.creator,
             PoolStatus.CLOSED
         );
-        lendingToken.safeTransfer(reciever, amountWithdrawable);
+
+        (bool success, ) = address(reciever).call{value: amountWithdrawable}(
+            ""
+        );
+        require(success, "Failed to transfer amount");
     }
 
     // INTERNAL FUNCTIONS
 
     // (pool balance - total lent out) + total repaid
     // This can be used to check exact amount pool creator can currently withdraw
-    function _getPoolBalanceWithInterest(uint256 poolId)
-        public
-        view
-        returns (uint256)
-    {
+    function _getPoolBalanceWithInterest(
+        uint256 poolId
+    ) public view returns (uint256) {
         uint256 totalAmountLoaned;
         uint256 totalAmountRepaid;
         for (uint256 i = 0; i < countLoansInPool[poolId]; i++) {
@@ -249,11 +240,10 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
             .amount - totalAmountLoaned);
     }
 
-    function _calcLoanPartPayment(uint256 loanId, uint256 poolId)
-        public
-        view
-        returns (uint256)
-    {
+    function _calcLoanPartPayment(
+        uint256 loanId,
+        uint256 poolId
+    ) public view returns (uint256) {
         LoanDetails memory Loan = PoolRegistryStore(poolRegistryStoreAddress)
             .getLoanByPoolID(poolId, loanId);
 
@@ -287,11 +277,10 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
         return partPayment + interest + defaultFeeAmount;
     }
 
-    function _calcLoanFullPayment(uint256 loanId, uint256 poolId)
-        public
-        view
-        returns (uint256)
-    {
+    function _calcLoanFullPayment(
+        uint256 loanId,
+        uint256 poolId
+    ) public view returns (uint256) {
         LoanDetails memory Loan = PoolRegistryStore(poolRegistryStoreAddress)
             .getLoanByPoolID(poolId, loanId);
 
@@ -307,20 +296,17 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
         }
     }
 
-    function _fullPaymentWithDefault(LoanDetails memory Loan)
-        internal
-        pure
-        returns (uint256)
-    {
+    function _fullPaymentWithDefault(
+        LoanDetails memory Loan
+    ) internal pure returns (uint256) {
         uint256 defaultFeeAmount = (Loan.principal * DEFAULT_FEE_PERCENT) / 100;
         return Loan.principal + defaultFeeAmount;
     }
 
-    function _isLoanInDefault(uint256 loanId, uint256 poolId)
-        public
-        view
-        returns (bool)
-    {
+    function _isLoanInDefault(
+        uint256 loanId,
+        uint256 poolId
+    ) public view returns (bool) {
         PoolDetails memory Pool = PoolRegistryStore(poolRegistryStoreAddress)
             .getPoolByID(poolId);
         // check if loanId is valid
@@ -360,9 +346,14 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
         return true;
     }
 
-    function _completeRefundBorrower(address borrowerAddress, uint256 amount)
-        public
-    {
-        lendingToken.safeTransfer(borrowerAddress, amount);
+    function _completeRefundBorrower(
+        address borrowerAddress,
+        uint256 amount
+    ) public {
+        (bool success, ) = address(borrowerAddress).call{value: amount}("");
+        require(success, "Failed to refund borrower");
     }
+
+
+    receive() external payable virtual {}
 }

@@ -84,7 +84,7 @@ struct LoanRepaymentDetails {
 
 // File contracts/models/Events.sol
 
-
+// SPDX-License-Identifier: MIT
 pragma solidity 0.8.1;
 
 abstract contract Events is Schema {
@@ -109,7 +109,6 @@ abstract contract Events is Schema {
     // Qredos.sol
 
     event QredosContractDeployed(
-        address paymentTokenAddress,
         address lendingPoolAddress
     );
     event LendingPoolAddressUpdated(address oldValue, address newValue);
@@ -131,7 +130,6 @@ abstract contract Events is Schema {
         uint256 indexed liquidationId,
         address newOwner
     );
-    event PaymentTokenAddressUpdated(address oldValue, address newValue);
 
     event RefundBorrower(
         uint256 indexed purchaseId,
@@ -141,9 +139,122 @@ abstract contract Events is Schema {
 }
 
 
+// File @openzeppelin/contracts/utils/Context.sol@v4.7.3
+
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Contracts v4.4.1 (utils/Context.sol)
+
+pragma solidity ^0.8.0;
+
+/**
+ * @dev Provides information about the current execution context, including the
+ * sender of the transaction and its data. While these are generally available
+ * via msg.sender and msg.data, they should not be accessed in such a direct
+ * manner, since when dealing with meta-transactions the account sending and
+ * paying for execution may not be the actual sender (as far as an application
+ * is concerned).
+ *
+ * This contract is only required for intermediate, library-like contracts.
+ */
+abstract contract Context {
+    function _msgSender() internal view virtual returns (address) {
+        return msg.sender;
+    }
+
+    function _msgData() internal view virtual returns (bytes calldata) {
+        return msg.data;
+    }
+}
+
+
+// File @openzeppelin/contracts/access/Ownable.sol@v4.7.3
+
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Contracts (last updated v4.7.0) (access/Ownable.sol)
+
+pragma solidity ^0.8.0;
+
+/**
+ * @dev Contract module which provides a basic access control mechanism, where
+ * there is an account (an owner) that can be granted exclusive access to
+ * specific functions.
+ *
+ * By default, the owner account will be the one that deploys the contract. This
+ * can later be changed with {transferOwnership}.
+ *
+ * This module is used through inheritance. It will make available the modifier
+ * `onlyOwner`, which can be applied to your functions to restrict their use to
+ * the owner.
+ */
+abstract contract Ownable is Context {
+    address private _owner;
+
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+
+    /**
+     * @dev Initializes the contract setting the deployer as the initial owner.
+     */
+    constructor() {
+        _transferOwnership(_msgSender());
+    }
+
+    /**
+     * @dev Throws if called by any account other than the owner.
+     */
+    modifier onlyOwner() {
+        _checkOwner();
+        _;
+    }
+
+    /**
+     * @dev Returns the address of the current owner.
+     */
+    function owner() public view virtual returns (address) {
+        return _owner;
+    }
+
+    /**
+     * @dev Throws if the sender is not the owner.
+     */
+    function _checkOwner() internal view virtual {
+        require(owner() == _msgSender(), "Ownable: caller is not the owner");
+    }
+
+    /**
+     * @dev Leaves the contract without owner. It will not be possible to call
+     * `onlyOwner` functions anymore. Can only be called by the current owner.
+     *
+     * NOTE: Renouncing ownership will leave the contract without an owner,
+     * thereby removing any functionality that is only available to the owner.
+     */
+    function renounceOwnership() public virtual onlyOwner {
+        _transferOwnership(address(0));
+    }
+
+    /**
+     * @dev Transfers ownership of the contract to a new account (`newOwner`).
+     * Can only be called by the current owner.
+     */
+    function transferOwnership(address newOwner) public virtual onlyOwner {
+        require(newOwner != address(0), "Ownable: new owner is the zero address");
+        _transferOwnership(newOwner);
+    }
+
+    /**
+     * @dev Transfers ownership of the contract to a new account (`newOwner`).
+     * Internal function without access restriction.
+     */
+    function _transferOwnership(address newOwner) internal virtual {
+        address oldOwner = _owner;
+        _owner = newOwner;
+        emit OwnershipTransferred(oldOwner, newOwner);
+    }
+}
+
+
 // File @openzeppelin/contracts/token/ERC20/IERC20.sol@v4.7.3
 
-
+// SPDX-License-Identifier: MIT
 // OpenZeppelin Contracts (last updated v4.6.0) (token/ERC20/IERC20.sol)
 
 pragma solidity ^0.8.0;
@@ -229,7 +340,7 @@ interface IERC20 {
 
 // File @openzeppelin/contracts/token/ERC20/extensions/draft-IERC20Permit.sol@v4.7.3
 
-
+// SPDX-License-Identifier: MIT
 // OpenZeppelin Contracts v4.4.1 (token/ERC20/extensions/draft-IERC20Permit.sol)
 
 pragma solidity ^0.8.0;
@@ -293,7 +404,7 @@ interface IERC20Permit {
 
 // File @openzeppelin/contracts/utils/Address.sol@v4.7.3
 
-
+// SPDX-License-Identifier: MIT
 // OpenZeppelin Contracts (last updated v4.7.0) (utils/Address.sol)
 
 pragma solidity ^0.8.1;
@@ -519,7 +630,7 @@ library Address {
 
 // File @openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol@v4.7.3
 
-
+// SPDX-License-Identifier: MIT
 // OpenZeppelin Contracts (last updated v4.7.0) (token/ERC20/utils/SafeERC20.sol)
 
 pragma solidity ^0.8.0;
@@ -635,122 +746,9 @@ library SafeERC20 {
 }
 
 
-// File @openzeppelin/contracts/utils/Context.sol@v4.7.3
-
-
-// OpenZeppelin Contracts v4.4.1 (utils/Context.sol)
-
-pragma solidity ^0.8.0;
-
-/**
- * @dev Provides information about the current execution context, including the
- * sender of the transaction and its data. While these are generally available
- * via msg.sender and msg.data, they should not be accessed in such a direct
- * manner, since when dealing with meta-transactions the account sending and
- * paying for execution may not be the actual sender (as far as an application
- * is concerned).
- *
- * This contract is only required for intermediate, library-like contracts.
- */
-abstract contract Context {
-    function _msgSender() internal view virtual returns (address) {
-        return msg.sender;
-    }
-
-    function _msgData() internal view virtual returns (bytes calldata) {
-        return msg.data;
-    }
-}
-
-
-// File @openzeppelin/contracts/access/Ownable.sol@v4.7.3
-
-
-// OpenZeppelin Contracts (last updated v4.7.0) (access/Ownable.sol)
-
-pragma solidity ^0.8.0;
-
-/**
- * @dev Contract module which provides a basic access control mechanism, where
- * there is an account (an owner) that can be granted exclusive access to
- * specific functions.
- *
- * By default, the owner account will be the one that deploys the contract. This
- * can later be changed with {transferOwnership}.
- *
- * This module is used through inheritance. It will make available the modifier
- * `onlyOwner`, which can be applied to your functions to restrict their use to
- * the owner.
- */
-abstract contract Ownable is Context {
-    address private _owner;
-
-    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
-
-    /**
-     * @dev Initializes the contract setting the deployer as the initial owner.
-     */
-    constructor() {
-        _transferOwnership(_msgSender());
-    }
-
-    /**
-     * @dev Throws if called by any account other than the owner.
-     */
-    modifier onlyOwner() {
-        _checkOwner();
-        _;
-    }
-
-    /**
-     * @dev Returns the address of the current owner.
-     */
-    function owner() public view virtual returns (address) {
-        return _owner;
-    }
-
-    /**
-     * @dev Throws if the sender is not the owner.
-     */
-    function _checkOwner() internal view virtual {
-        require(owner() == _msgSender(), "Ownable: caller is not the owner");
-    }
-
-    /**
-     * @dev Leaves the contract without owner. It will not be possible to call
-     * `onlyOwner` functions anymore. Can only be called by the current owner.
-     *
-     * NOTE: Renouncing ownership will leave the contract without an owner,
-     * thereby removing any functionality that is only available to the owner.
-     */
-    function renounceOwnership() public virtual onlyOwner {
-        _transferOwnership(address(0));
-    }
-
-    /**
-     * @dev Transfers ownership of the contract to a new account (`newOwner`).
-     * Can only be called by the current owner.
-     */
-    function transferOwnership(address newOwner) public virtual onlyOwner {
-        require(newOwner != address(0), "Ownable: new owner is the zero address");
-        _transferOwnership(newOwner);
-    }
-
-    /**
-     * @dev Transfers ownership of the contract to a new account (`newOwner`).
-     * Internal function without access restriction.
-     */
-    function _transferOwnership(address newOwner) internal virtual {
-        address oldOwner = _owner;
-        _owner = newOwner;
-        emit OwnershipTransferred(oldOwner, newOwner);
-    }
-}
-
-
 // File hardhat/console.sol@v2.10.1
 
-
+// SPDX-License-Identifier: MIT
 pragma solidity >= 0.4.22 <0.9.0;
 
 library console {
@@ -2286,7 +2284,7 @@ library console {
 
 // File contracts/store/PoolRegistryStore.sol
 
-
+// SPDX-License-Identifier: MIT
 pragma solidity 0.8.1;
 
 
@@ -2500,22 +2498,15 @@ contract PoolRegistryStore is Ownable, Schema {
 
 // File contracts/PoolRegistry.sol
 
-
+// SPDX-License-Identifier: MIT
 pragma solidity 0.8.1;
 
 
-
-
 contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
-    using SafeERC20 for IERC20;
-
-    IERC20 internal lendingToken;
     address public poolRegistryStoreAddress;
     uint256 public constant DEFAULT_FEE_PERCENT = 15; // default fee percentage
 
-    constructor(address _lendingTokenAddress, address _PoolRegistryStoreAddress)
-    {
-        lendingToken = IERC20(_lendingTokenAddress);
+    constructor(address _PoolRegistryStoreAddress) {
         poolRegistryStoreAddress = _PoolRegistryStoreAddress;
         emit PoolRegistryContractDeployed();
     }
@@ -2537,7 +2528,6 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
             "Pool.createPool: Invalid Input!"
         );
         require(_creator != address(0x0), "Pool.createPool: Invalid address!");
-        lendingToken.safeTransferFrom(msg.sender, address(this), _amount);
         uint256 poolId = PoolRegistryStore(poolRegistryStoreAddress)
             ._createPool(
                 _amount,
@@ -2552,12 +2542,9 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
     }
 
     // Get pools that can cover principal
-    function getValidPools(uint256 principal)
-        external
-        view
-        onlyOwner
-        returns (uint256[] memory)
-    {
+    function getValidPools(
+        uint256 principal
+    ) external view onlyOwner returns (uint256[] memory) {
         require(principal > 0, "Pool.getValidPools: Invalid input!");
         uint256[] memory validPools;
         uint256 count = 0;
@@ -2592,10 +2579,13 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
             borrower != address(0x0),
             "Pool.requestLoan: Invalid borrower!"
         );
-        lendingToken.safeTransfer(msg.sender, principal);
+
+        (bool success, ) = address(msg.sender).call{value: principal}("");
+        require(success, "Failed to transfer amount");
+
         uint256 loanId = PoolRegistryStore(poolRegistryStoreAddress)
             ._createLoan(poolId, borrower, principal);
-        emit LoanCreated(loanId,poolId, borrower, principal);
+        emit LoanCreated(loanId, poolId, borrower, principal);
         return loanId;
     }
 
@@ -2612,7 +2602,6 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
             amount == Loan.principal,
             "Pool.repayLoanFull: Invalid amount!"
         );
-        lendingToken.safeTransferFrom(msg.sender, address(this), amount);
         uint256 loanRepaymentId = PoolRegistryStore(poolRegistryStoreAddress)
             ._createLoanRepayment(loanId, amount, LoanRepaymentType.FULL);
         PoolRegistryStore(poolRegistryStoreAddress)._updateLoan(
@@ -2639,7 +2628,6 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
             amount == _calcLoanPartPayment(loanId, poolId),
             "Pool.repayLoanPart: Invalid amount!"
         );
-        lendingToken.safeTransferFrom(msg.sender, address(this), amount);
 
         uint256 loanRepaymentId = PoolRegistryStore(poolRegistryStoreAddress)
             ._createLoanRepayment(loanId, amount, LoanRepaymentType.PART);
@@ -2670,7 +2658,6 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
             "Pool.fundPool: Pool is closed!"
         );
         require(amount > 0, "Pool: Invalid input!");
-        lendingToken.safeTransferFrom(msg.sender, address(this), amount);
         PoolRegistryStore(poolRegistryStoreAddress)._updatePool(
             poolId,
             Pool.amount + amount,
@@ -2698,18 +2685,20 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
             Pool.creator,
             PoolStatus.CLOSED
         );
-        lendingToken.safeTransfer(reciever, amountWithdrawable);
+
+        (bool success, ) = address(reciever).call{value: amountWithdrawable}(
+            ""
+        );
+        require(success, "Failed to transfer amount");
     }
 
     // INTERNAL FUNCTIONS
 
     // (pool balance - total lent out) + total repaid
     // This can be used to check exact amount pool creator can currently withdraw
-    function _getPoolBalanceWithInterest(uint256 poolId)
-        public
-        view
-        returns (uint256)
-    {
+    function _getPoolBalanceWithInterest(
+        uint256 poolId
+    ) public view returns (uint256) {
         uint256 totalAmountLoaned;
         uint256 totalAmountRepaid;
         for (uint256 i = 0; i < countLoansInPool[poolId]; i++) {
@@ -2746,11 +2735,10 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
             .amount - totalAmountLoaned);
     }
 
-    function _calcLoanPartPayment(uint256 loanId, uint256 poolId)
-        public
-        view
-        returns (uint256)
-    {
+    function _calcLoanPartPayment(
+        uint256 loanId,
+        uint256 poolId
+    ) public view returns (uint256) {
         LoanDetails memory Loan = PoolRegistryStore(poolRegistryStoreAddress)
             .getLoanByPoolID(poolId, loanId);
 
@@ -2784,11 +2772,10 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
         return partPayment + interest + defaultFeeAmount;
     }
 
-    function _calcLoanFullPayment(uint256 loanId, uint256 poolId)
-        public
-        view
-        returns (uint256)
-    {
+    function _calcLoanFullPayment(
+        uint256 loanId,
+        uint256 poolId
+    ) public view returns (uint256) {
         LoanDetails memory Loan = PoolRegistryStore(poolRegistryStoreAddress)
             .getLoanByPoolID(poolId, loanId);
 
@@ -2804,20 +2791,17 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
         }
     }
 
-    function _fullPaymentWithDefault(LoanDetails memory Loan)
-        internal
-        pure
-        returns (uint256)
-    {
+    function _fullPaymentWithDefault(
+        LoanDetails memory Loan
+    ) internal pure returns (uint256) {
         uint256 defaultFeeAmount = (Loan.principal * DEFAULT_FEE_PERCENT) / 100;
         return Loan.principal + defaultFeeAmount;
     }
 
-    function _isLoanInDefault(uint256 loanId, uint256 poolId)
-        public
-        view
-        returns (bool)
-    {
+    function _isLoanInDefault(
+        uint256 loanId,
+        uint256 poolId
+    ) public view returns (bool) {
         PoolDetails memory Pool = PoolRegistryStore(poolRegistryStoreAddress)
             .getPoolByID(poolId);
         // check if loanId is valid
@@ -2857,9 +2841,14 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
         return true;
     }
 
-    function _completeRefundBorrower(address borrowerAddress, uint256 amount)
-        public
-    {
-        lendingToken.safeTransfer(borrowerAddress, amount);
+    function _completeRefundBorrower(
+        address borrowerAddress,
+        uint256 amount
+    ) public {
+        (bool success, ) = address(borrowerAddress).call{value: amount}("");
+        require(success, "Failed to refund borrower");
     }
+
+
+    receive() external payable virtual {}
 }

@@ -1,8 +1,8 @@
 const { expect } = require("chai");
 const { BigNumber, providers } = require("ethers");
-const { parseEther } = require("ethers/lib/utils");
+const { parseEther, formatEther } = require("ethers/lib/utils");
 const { ethers } = require("hardhat");
-const { increaseTimeTo, latestTime, duration } = require("./utils/utils");
+const { increaseTimeTo, latestTime, duration, transferEther } = require("./utils/utils");
 
 describe("Qredos", function () {
   let POOL_ID,
@@ -16,10 +16,11 @@ describe("Qredos", function () {
   // should emit loanRepaid event if successfull
   let lendingPoolBalanceBefore;
   before(async () => {
+    provider = ethers.provider;
     [deployer, buyer, lender, liquidator] = await ethers.getSigners();
 
-    weth = await ethers.getContractFactory("ERC20Token");
-    WETH = await weth.deploy("Wrapped Ether", "WETH");
+    // weth = await ethers.getContractFactory("ERC20Token");
+    // WETH = await weth.deploy("Wrapped Ether", "WETH");
 
     bayc = await ethers.getContractFactory("ERC721Token");
     BAYC = await bayc.deploy();
@@ -32,13 +33,13 @@ describe("Qredos", function () {
     // Pool
     PoolRegistry = await ethers.getContractFactory("PoolRegistry");
     poolRegistry = await PoolRegistry.deploy(
-      WETH.address,
+      // WETH.address,
       poolRegistryStore.address
     );
     // Oracle
     Qredos = await ethers.getContractFactory("Qredos");
     qredos = await Qredos.deploy(
-      WETH.address,
+      // WETH.address,
       poolRegistry.address,
       qredosStore.address
     );
@@ -51,18 +52,21 @@ describe("Qredos", function () {
     await qredosStore.transferOwnership(qredos.address);
 
     // Fund test accounts with accepted payment token
-    await WETH.transfer(buyer.address, parseEther("50000"));
-    await WETH.transfer(lender.address, parseEther("50000"));
-    await WETH.transfer(liquidator.address, parseEther("50000"));
+
+    // await WETH.transfer(buyer.address, parseEther("50000"));
+    // await WETH.transfer(lender.address, parseEther("50000"));
+    // await WETH.transfer(liquidator.address, parseEther("50000"));
+
+
+
+    deployerBalanceBefore = await provider.getBalance(deployer.address);
   });
   describe("createPool", function () {
     it("should emit poolFunded & poolCreated events if successfull", async () => {
-      let amount = parseEther("5000"); // 50000
-
-      await WETH.connect(lender).approve(qredos.address, amount);
+      let amount = parseEther("500");  // 50000
       let txn = await qredos
         .connect(lender)
-        .createPool(amount, 3, 30, 7890000, 3, lender.address);
+        .createPool(amount, 3, 30, 7890000, 3, lender.address, { value: amount });
       let reciept = await txn.wait();
       let PoolCreatedEvent = reciept.events?.filter((x) => {
         return x.event == "PoolCreated";
@@ -73,38 +77,37 @@ describe("Qredos", function () {
       expect(reciept).to.emit(PoolRegistry, "PoolFunded");
     });
     it("should increase pool balance if successfull", async () => {
-      let expectedPoolBalance = parseEther("5000");
+      let expectedPoolBalance = parseEther("500");
       let result = await qredos.getPoolBalance(POOL_ID);
       expect(result).to.equal(expectedPoolBalance);
     });
   });
   describe("fundPool", function () {
     it("should fail with an invalid poolId", async () => {
-      let amount = parseEther("2500");
+      let amount = parseEther("25");
 
-      await WETH.connect(lender).approve(qredos.address, amount);
       await expect(
-        qredos.connect(lender).fundPool(2, amount)
+        qredos.connect(lender).fundPool(2, amount, { value: amount })
       ).to.be.revertedWith("getPoolByID: No such record");
     });
     it("should emit poolFunded event if successfull", async () => {
-      let amount = parseEther("2500");
+      let amount = parseEther("25");
 
-      await WETH.connect(lender).approve(qredos.address, amount);
-      let txn = await qredos.connect(lender).fundPool(POOL_ID, amount);
+      let txn = await qredos.connect(lender).fundPool(POOL_ID, amount, { value: amount });
       let reciept = await txn.wait();
       expect(reciept).to.emit(PoolRegistry, "PoolFunded");
     });
     it("should increase pool balance if successfull", async () => {
-      let expectedPoolBalance = parseEther("7500");
+      let expectedPoolBalance = parseEther("525");
       let result = await qredos.getPoolBalance(POOL_ID);
       expect(result).to.equal(expectedPoolBalance);
     });
   });
+
   describe("purchaseNFT", async function () {
     it("should fail with an invalid poolId", async () => {
-      let downPaymentAmount = parseEther("10000");
-      let principal = parseEther("10000");
+      let downPaymentAmount = parseEther("100");
+      let principal = parseEther("100");
       let invalidPooliD = 2;
 
       await expect(
@@ -120,8 +123,8 @@ describe("Qredos", function () {
       ).to.be.revertedWith("getPoolByID: No such record");
     });
     it("should fail with invalid principal", async () => {
-      let downPaymentAmount = parseEther("10000");
-      let invalidPrincipal = parseEther("700");
+      let downPaymentAmount = parseEther("100");
+      let invalidPrincipal = parseEther("7");
 
       await expect(
         qredos
@@ -136,8 +139,8 @@ describe("Qredos", function () {
       ).to.be.revertedWith("Qredos.purchaseNFT: Invalid principal!");
     });
     it("should fail if pool has insufficient funds", async () => {
-      let downPaymentAmount = parseEther("100000");
-      let invalidPrincipal = parseEther("100000");
+      let downPaymentAmount = parseEther("1000");
+      let invalidPrincipal = parseEther("1000");
 
       await expect(
         qredos
@@ -154,9 +157,9 @@ describe("Qredos", function () {
       );
     });
     it("should emit PurchaseCreated event if successfull", async () => {
-      let downPaymentAmount = parseEther("2000");
-      let invalidPrincipal = parseEther("2000");
-      await WETH.connect(buyer).approve(qredos.address, downPaymentAmount);
+      let downPaymentAmount = parseEther("20");
+      let invalidPrincipal = parseEther("20");
+      // await WETH.connect(buyer).approve(qredos.address, downPaymentAmount);
       let txn = await qredos
         .connect(buyer)
         .purchaseNFT(
@@ -164,7 +167,8 @@ describe("Qredos", function () {
           0,
           downPaymentAmount,
           invalidPrincipal,
-          POOL_ID
+          POOL_ID,
+          { value: downPaymentAmount }
         );
       let result = await txn.wait();
 
@@ -188,6 +192,12 @@ describe("Qredos", function () {
       // console.log(events);
 
     })
+
+    it("should send funds for purchase to EOA if successfull", async () => {
+      let deployerBalanceAfter = await provider.getBalance(deployer.address);
+      expect(formatEther(deployerBalanceAfter) - formatEther(deployerBalanceBefore)).to.equal(40)
+    })
+
   });
 
   describe("completeNFTPurchase", async function () {
@@ -246,7 +256,7 @@ describe("Qredos", function () {
       ).to.be.revertedWith("No such record");
     });
     it("should emit loanRepaid event if successfull", async () => {
-      lendingPoolBalanceBefore = await WETH.balanceOf(poolRegistry.address);
+      lendingPoolBalanceBefore = await provider.getBalance(poolRegistry.address);
       //
       const FULL = BigNumber.from("0");
       let purchase = await qredosStore.getPurchaseByID(
@@ -258,15 +268,14 @@ describe("Qredos", function () {
         purchase.loanId
       );
 
-      await WETH.connect(buyer).approve(qredos.address, loan.principal);
       let txn = await qredos
         .connect(buyer)
-        .repayLoan(PURCHASE_ID, FULL, POOL_ID);
+        .repayLoan(PURCHASE_ID, FULL, POOL_ID, { value: loan.principal });
       let result = await txn.wait();
       expect(result).to.emit(qredos, "LoanRepaid");
     });
     it("should increase lending pool contract balance if successfull", async () => {
-      let lendingPoolBalanceAfter = await WETH.balanceOf(poolRegistry.address);
+      let lendingPoolBalanceAfter = await provider.getBalance(poolRegistry.address);
       expect(lendingPoolBalanceAfter).to.be.greaterThan(
         lendingPoolBalanceBefore
       );
@@ -292,21 +301,21 @@ describe("Qredos", function () {
     it("should increase pool contract balance & emit loanRepaid event", async () => {
       BAYC.safeMint(deployer.address, 1);
       // create new pool for this test case
-      let amount = parseEther("7000"); // 50000
-      await WETH.connect(lender).approve(qredos.address, amount);
+      let amount = parseEther("70"); // 50000
+      // await WETH.connect(lender).approve(qredos.address, amount);
       let createPoolTxn = await qredos
         .connect(lender)
-        .createPool(amount, 3, 30, 7890000, 3, lender.address);
+        .createPool(amount, 3, 30, 7890000, 3, lender.address, { value: amount });
       let createPoolResult = await createPoolTxn.wait();
       let PoolCreatedEvent = createPoolResult.events?.filter((x) => {
         return x.event == "PoolCreated";
       });
       POOL_ID_2 = PoolCreatedEvent[0].args.poolId;
       // purchase another nft for this test case
-      let downPaymentAmount = parseEther("3500");
-      let principalAmount = parseEther("3500");
+      let downPaymentAmount = parseEther("35");
+      let principalAmount = parseEther("35");
 
-      await WETH.connect(buyer).approve(qredos.address, downPaymentAmount);
+      // await WETH.connect(buyer).approve(qredos.address, downPaymentAmount);
       let PurchaseTxn = await qredos
         .connect(buyer)
         .purchaseNFT(
@@ -314,7 +323,8 @@ describe("Qredos", function () {
           1,
           downPaymentAmount,
           principalAmount,
-          POOL_ID_2
+          POOL_ID_2,
+          { value: downPaymentAmount }
         );
       let PurchaseResult = await PurchaseTxn.wait();
 
@@ -329,7 +339,10 @@ describe("Qredos", function () {
         1
       );
 
-      let _lendingPoolBalanceBefore = await WETH.balanceOf(
+      // let _lendingPoolBalanceBefore = await WETH.balanceOf(
+      //   poolRegistry.address
+      // );
+      let _lendingPoolBalanceBefore = await provider.getBalance(
         poolRegistry.address
       );
 
@@ -338,14 +351,14 @@ describe("Qredos", function () {
 
       // make part payment of purchase
       let PART = BigNumber.from("1");
-      await WETH.connect(buyer).approve(qredos.address, principalAmount);
       let repayLoanTxn = await qredos
         .connect(buyer)
-        .repayLoan(PURCHASE_ID_2, PART, POOL_ID_2);
+        .repayLoan(PURCHASE_ID_2, PART, POOL_ID_2, { value: principalAmount });
+
       let repayLoanResult = await repayLoanTxn.wait();
       expect(repayLoanResult).to.emit(qredos, "LoanRepaid");
 
-      let _lendingPoolBalanceAfter = await WETH.balanceOf(poolRegistry.address);
+      let _lendingPoolBalanceAfter = await provider.getBalance(poolRegistry.address);
       expect(_lendingPoolBalanceAfter).to.be.greaterThan(
         _lendingPoolBalanceBefore
       );
@@ -365,10 +378,8 @@ describe("Qredos", function () {
       let loan = await poolRegistryStore.getLoanByPoolID(POOL_ID_2, 1);
       expect(loan.status).to.be.equal(0);
 
-      await WETH.connect(buyer).approve(qredos.address, principalAmount);
-      await qredos.connect(buyer).repayLoan(PURCHASE_ID_2, PART, POOL_ID_2);
-      await WETH.connect(buyer).approve(qredos.address, principalAmount);
-      await qredos.connect(buyer).repayLoan(PURCHASE_ID_2, PART, POOL_ID_2);
+      await qredos.connect(buyer).repayLoan(PURCHASE_ID_2, PART, POOL_ID_2, { value: principalAmount });
+      await qredos.connect(buyer).repayLoan(PURCHASE_ID_2, PART, POOL_ID_2, { value: principalAmount });
 
       loan = await poolRegistryStore.getLoanByPoolID(POOL_ID_2, 1);
       expect(loan.status).to.be.equal(1);
@@ -406,21 +417,21 @@ describe("Qredos", function () {
       let tokenId = 2;
       BAYC.safeMint(deployer.address, tokenId);
       // create new pool for this test case
-      let amount = parseEther("7000"); // 50000
-      await WETH.connect(lender).approve(qredos.address, amount);
+      let amount = parseEther("70"); // 50000
+      // await WETH.connect(lender).approve(qredos.address, amount);
       let createPoolTxn = await qredos
         .connect(lender)
-        .createPool(amount, 3, 30, 7890000, 3, lender.address);
+        .createPool(amount, 3, 30, 7890000, 3, lender.address, { value: amount });
       let createPoolResult = await createPoolTxn.wait();
       let PoolCreatedEvent = createPoolResult.events?.filter((x) => {
         return x.event == "PoolCreated";
       });
       POOL_ID_3 = PoolCreatedEvent[0].args.poolId;
       // purchase another nft for this test case
-      let downPaymentAmount = parseEther("3500");
-      let principalAmount = parseEther("3500");
+      let downPaymentAmount = parseEther("35");
+      let principalAmount = parseEther("35");
 
-      await WETH.connect(buyer).approve(qredos.address, downPaymentAmount);
+      // await WETH.connect(buyer).approve(qredos.address, downPaymentAmount);
       let PurchaseTxn = await qredos
         .connect(buyer)
         .purchaseNFT(
@@ -428,7 +439,8 @@ describe("Qredos", function () {
           tokenId,
           downPaymentAmount,
           principalAmount,
-          POOL_ID_3
+          POOL_ID_3,
+          { value: downPaymentAmount }
         );
       let PurchaseResult = await PurchaseTxn.wait();
 
@@ -448,8 +460,8 @@ describe("Qredos", function () {
     });
     it("should fail if caller isnt owner", async () => {
       let invalidPurchaseId = 10;
-      let currentNftPrice = parseEther("2000");
-      let discountAmount = parseEther("3000"); //  from 3500
+      let currentNftPrice = parseEther("20");
+      let discountAmount = parseEther("30"); //  from 3500
       await expect(
         qredos
           .connect(buyer)
@@ -463,8 +475,8 @@ describe("Qredos", function () {
     });
     it("should fail for invalid purchaseId", async () => {
       let invalidPurchaseId = 10;
-      let currentNftPrice = parseEther("2000");
-      let discountAmount = parseEther("3000"); //  from 3500
+      let currentNftPrice = parseEther("20");
+      let discountAmount = parseEther("30"); //  from 3500
       await expect(
         qredos
           .connect(deployer)
@@ -491,8 +503,8 @@ describe("Qredos", function () {
       await increaseTimeTo(
         (await latestTime()) + Number(pool.durationInSecs) + duration.hours(2)
       );
-      let discountAmount = parseEther("3000"); //  from 3500
-      let currentNftPrice = parseEther("3000");
+      let discountAmount = parseEther("30"); //  from 3500
+      let currentNftPrice = parseEther("30");
       let txn = await qredos
         .connect(deployer)
         .startLiquidation(
@@ -527,20 +539,22 @@ describe("Qredos", function () {
     });
     it("should emit CompleteLiquidation event if successfull", async () => {
       let liquidation = await qredosStore.getLiquidationByID(LIQUIDATION_ID);
-      let poolBalanceBefore = await WETH.balanceOf(poolRegistry.address);
-      await WETH.connect(liquidator).approve(
-        qredos.address,
-        liquidation.discountAmount
-      );
+      // let poolBalanceBefore = await WETH.balanceOf(poolRegistry.address);
+      let poolBalanceBefore = await provider.getBalance(poolRegistry.address);
+      // await WETH.connect(liquidator).approve(
+      //   qredos.address,
+      //   liquidation.discountAmount
+      // );
       let txn = await qredos
         .connect(liquidator)
-        .completeLiquidation(LIQUIDATION_ID, buyer.address);
+        .completeLiquidation(LIQUIDATION_ID, buyer.address, { value: liquidation.discountAmount });
       let reciept = await txn.wait();
       // console.log(reciept.events)
       expect(reciept).to.emit(qredos, "CompleteLiquidation");
 
       // should increase oracle balance if successfull
-      let poolBalanceAfter = await WETH.balanceOf(poolRegistry.address);
+      // let poolBalanceAfter = await WETH.balanceOf(poolRegistry.address);
+      let poolBalanceAfter = await provider.getBalance(poolRegistry.address);
       expect(poolBalanceBefore).to.be.lessThan(poolBalanceAfter);
     });
     it("should update liquidation state if successfull", async () => {
@@ -561,14 +575,16 @@ describe("Qredos", function () {
       ).to.be.revertedWith("getPoolByID: No such record");
     });
     it("should emit PoolClosed event & fund poolOwner if successfull", async () => {
-      let poolOwnerBalanceBefore = await WETH.balanceOf(lender.address);
+      // let poolOwnerBalanceBefore = await WETH.balanceOf(lender.address);
+      let poolOwnerBalanceBefore = await provider.getBalance(lender.address);
 
       let txn = await qredos.connect(lender).closePool(POOL_ID, lender.address);
       let reciept = await txn.wait();
 
       expect(reciept).to.emit(qredos, "PoolClosed");
       // should fund poolOwner if successfull
-      let poolOwnerBalanceAfter = await WETH.balanceOf(lender.address);
+      // let poolOwnerBalanceAfter = await WETH.balanceOf(lender.address);
+      let poolOwnerBalanceAfter = await provider.getBalance(lender.address);
       expect(poolOwnerBalanceAfter).to.be.greaterThan(poolOwnerBalanceBefore);
     });
     it("should set poolStatus to closed if successfull", async () => {

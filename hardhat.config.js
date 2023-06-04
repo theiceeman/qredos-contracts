@@ -63,6 +63,6 @@ module.exports = {
     timeout: 20000,
   },
   gasReporter: {
-    enabled: true,
+    enabled: false,
   },
 };

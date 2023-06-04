@@ -84,7 +84,7 @@ struct LoanRepaymentDetails {
 
 // File contracts/models/Events.sol
 
-
+// SPDX-License-Identifier: MIT
 pragma solidity 0.8.1;
 
 abstract contract Events is Schema {
@@ -109,7 +109,6 @@ abstract contract Events is Schema {
     // Qredos.sol
 
     event QredosContractDeployed(
-        address paymentTokenAddress,
         address lendingPoolAddress
     );
     event LendingPoolAddressUpdated(address oldValue, address newValue);
@@ -131,7 +130,6 @@ abstract contract Events is Schema {
         uint256 indexed liquidationId,
         address newOwner
     );
-    event PaymentTokenAddressUpdated(address oldValue, address newValue);
 
     event RefundBorrower(
         uint256 indexed purchaseId,
@@ -143,7 +141,7 @@ abstract contract Events is Schema {
 
 // File contracts/interfaces/IPoolRegistry.sol
 
-
+// SPDX-License-Identifier: MIT
 pragma solidity 0.8.1;
 
 interface IPoolRegistry {
@@ -181,103 +179,9 @@ interface IPoolRegistry {
 }
 
 
-// File @openzeppelin/contracts/token/ERC20/IERC20.sol@v4.7.3
-
-
-// OpenZeppelin Contracts (last updated v4.6.0) (token/ERC20/IERC20.sol)
-
-pragma solidity ^0.8.0;
-
-/**
- * @dev Interface of the ERC20 standard as defined in the EIP.
- */
-interface IERC20 {
-    /**
-     * @dev Emitted when `value` tokens are moved from one account (`from`) to
-     * another (`to`).
-     *
-     * Note that `value` may be zero.
-     */
-    event Transfer(address indexed from, address indexed to, uint256 value);
-
-    /**
-     * @dev Emitted when the allowance of a `spender` for an `owner` is set by
-     * a call to {approve}. `value` is the new allowance.
-     */
-    event Approval(address indexed owner, address indexed spender, uint256 value);
-
-    /**
-     * @dev Returns the amount of tokens in existence.
-     */
-    function totalSupply() external view returns (uint256);
-
-    /**
-     * @dev Returns the amount of tokens owned by `account`.
-     */
-    function balanceOf(address account) external view returns (uint256);
-
-    /**
-     * @dev Moves `amount` tokens from the caller's account to `to`.
-     *
-     * Returns a boolean value indicating whether the operation succeeded.
-     *
-     * Emits a {Transfer} event.
-     */
-    function transfer(address to, uint256 amount) external returns (bool);
-
-    /**
-     * @dev Returns the remaining number of tokens that `spender` will be
-     * allowed to spend on behalf of `owner` through {transferFrom}. This is
-     * zero by default.
-     *
-     * This value changes when {approve} or {transferFrom} are called.
-     */
-    function allowance(address owner, address spender) external view returns (uint256);
-
-    /**
-     * @dev Sets `amount` as the allowance of `spender` over the caller's tokens.
-     *
-     * Returns a boolean value indicating whether the operation succeeded.
-     *
-     * IMPORTANT: Beware that changing an allowance with this method brings the risk
-     * that someone may use both the old and the new allowance by unfortunate
-     * transaction ordering. One possible solution to mitigate this race
-     * condition is to first reduce the spender's allowance to 0 and set the
-     * desired value afterwards:
-     * https://github.com/ethereum/EIPs/issues/20#issuecomment-263524729
-     *
-     * Emits an {Approval} event.
-     */
-    function approve(address spender, uint256 amount) external returns (bool);
-
-    /**
-     * @dev Moves `amount` tokens from `from` to `to` using the
-     * allowance mechanism. `amount` is then deducted from the caller's
-     * allowance.
-     *
-     * Returns a boolean value indicating whether the operation succeeded.
-     *
-     * Emits a {Transfer} event.
-     */
-    function transferFrom(
-        address from,
-        address to,
-        uint256 amount
-    ) external returns (bool);
-}
-
-
-// File @openzeppelin/contracts/interfaces/IERC20.sol@v4.7.3
-
-
-// OpenZeppelin Contracts v4.4.1 (interfaces/IERC20.sol)
-
-pragma solidity ^0.8.0;
-
-
 // File @openzeppelin/contracts/utils/introspection/IERC165.sol@v4.7.3
 
-
+// SPDX-License-Identifier: MIT
 // OpenZeppelin Contracts v4.4.1 (utils/introspection/IERC165.sol)
 
 pragma solidity ^0.8.0;
@@ -306,7 +210,7 @@ interface IERC165 {
 
 // File @openzeppelin/contracts/token/ERC721/IERC721.sol@v4.7.3
 
-
+// SPDX-License-Identifier: MIT
 // OpenZeppelin Contracts (last updated v4.7.0) (token/ERC721/IERC721.sol)
 
 pragma solidity ^0.8.0;
@@ -451,7 +355,7 @@ interface IERC721 is IERC165 {
 
 // File @openzeppelin/contracts/interfaces/IERC721.sol@v4.7.3
 
-
+// SPDX-License-Identifier: MIT
 // OpenZeppelin Contracts v4.4.1 (interfaces/IERC721.sol)
 
 pragma solidity ^0.8.0;
@@ -459,7 +363,7 @@ pragma solidity ^0.8.0;
 
 // File @openzeppelin/contracts/token/ERC721/IERC721Receiver.sol@v4.7.3
 
-
+// SPDX-License-Identifier: MIT
 // OpenZeppelin Contracts (last updated v4.6.0) (token/ERC721/IERC721Receiver.sol)
 
 pragma solidity ^0.8.0;
@@ -490,7 +394,7 @@ interface IERC721Receiver {
 
 // File @openzeppelin/contracts/utils/Context.sol@v4.7.3
 
-
+// SPDX-License-Identifier: MIT
 // OpenZeppelin Contracts v4.4.1 (utils/Context.sol)
 
 pragma solidity ^0.8.0;
@@ -518,7 +422,7 @@ abstract contract Context {
 
 // File @openzeppelin/contracts/access/Ownable.sol@v4.7.3
 
-
+// SPDX-License-Identifier: MIT
 // OpenZeppelin Contracts (last updated v4.7.0) (access/Ownable.sol)
 
 pragma solidity ^0.8.0;
@@ -601,9 +505,95 @@ abstract contract Ownable is Context {
 }
 
 
+// File @openzeppelin/contracts/token/ERC20/IERC20.sol@v4.7.3
+
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Contracts (last updated v4.6.0) (token/ERC20/IERC20.sol)
+
+pragma solidity ^0.8.0;
+
+/**
+ * @dev Interface of the ERC20 standard as defined in the EIP.
+ */
+interface IERC20 {
+    /**
+     * @dev Emitted when `value` tokens are moved from one account (`from`) to
+     * another (`to`).
+     *
+     * Note that `value` may be zero.
+     */
+    event Transfer(address indexed from, address indexed to, uint256 value);
+
+    /**
+     * @dev Emitted when the allowance of a `spender` for an `owner` is set by
+     * a call to {approve}. `value` is the new allowance.
+     */
+    event Approval(address indexed owner, address indexed spender, uint256 value);
+
+    /**
+     * @dev Returns the amount of tokens in existence.
+     */
+    function totalSupply() external view returns (uint256);
+
+    /**
+     * @dev Returns the amount of tokens owned by `account`.
+     */
+    function balanceOf(address account) external view returns (uint256);
+
+    /**
+     * @dev Moves `amount` tokens from the caller's account to `to`.
+     *
+     * Returns a boolean value indicating whether the operation succeeded.
+     *
+     * Emits a {Transfer} event.
+     */
+    function transfer(address to, uint256 amount) external returns (bool);
+
+    /**
+     * @dev Returns the remaining number of tokens that `spender` will be
+     * allowed to spend on behalf of `owner` through {transferFrom}. This is
+     * zero by default.
+     *
+     * This value changes when {approve} or {transferFrom} are called.
+     */
+    function allowance(address owner, address spender) external view returns (uint256);
+
+    /**
+     * @dev Sets `amount` as the allowance of `spender` over the caller's tokens.
+     *
+     * Returns a boolean value indicating whether the operation succeeded.
+     *
+     * IMPORTANT: Beware that changing an allowance with this method brings the risk
+     * that someone may use both the old and the new allowance by unfortunate
+     * transaction ordering. One possible solution to mitigate this race
+     * condition is to first reduce the spender's allowance to 0 and set the
+     * desired value afterwards:
+     * https://github.com/ethereum/EIPs/issues/20#issuecomment-263524729
+     *
+     * Emits an {Approval} event.
+     */
+    function approve(address spender, uint256 amount) external returns (bool);
+
+    /**
+     * @dev Moves `amount` tokens from `from` to `to` using the
+     * allowance mechanism. `amount` is then deducted from the caller's
+     * allowance.
+     *
+     * Returns a boolean value indicating whether the operation succeeded.
+     *
+     * Emits a {Transfer} event.
+     */
+    function transferFrom(
+        address from,
+        address to,
+        uint256 amount
+    ) external returns (bool);
+}
+
+
 // File @openzeppelin/contracts/token/ERC20/extensions/draft-IERC20Permit.sol@v4.7.3
 
-
+// SPDX-License-Identifier: MIT
 // OpenZeppelin Contracts v4.4.1 (token/ERC20/extensions/draft-IERC20Permit.sol)
 
 pragma solidity ^0.8.0;
@@ -667,7 +657,7 @@ interface IERC20Permit {
 
 // File @openzeppelin/contracts/utils/Address.sol@v4.7.3
 
-
+// SPDX-License-Identifier: MIT
 // OpenZeppelin Contracts (last updated v4.7.0) (utils/Address.sol)
 
 pragma solidity ^0.8.1;
@@ -893,7 +883,7 @@ library Address {
 
 // File @openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol@v4.7.3
 
-
+// SPDX-License-Identifier: MIT
 // OpenZeppelin Contracts (last updated v4.7.0) (token/ERC20/utils/SafeERC20.sol)
 
 pragma solidity ^0.8.0;
@@ -1011,7 +1001,7 @@ library SafeERC20 {
 
 // File hardhat/console.sol@v2.10.1
 
-
+// SPDX-License-Identifier: MIT
 pragma solidity >= 0.4.22 <0.9.0;
 
 library console {
@@ -2547,7 +2537,7 @@ library console {
 
 // File contracts/store/PoolRegistryStore.sol
 
-
+// SPDX-License-Identifier: MIT
 pragma solidity 0.8.1;
 
 
@@ -2761,22 +2751,15 @@ contract PoolRegistryStore is Ownable, Schema {
 
 // File contracts/PoolRegistry.sol
 
-
+// SPDX-License-Identifier: MIT
 pragma solidity 0.8.1;
 
 
-
-
 contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
-    using SafeERC20 for IERC20;
-
-    IERC20 internal lendingToken;
     address public poolRegistryStoreAddress;
     uint256 public constant DEFAULT_FEE_PERCENT = 15; // default fee percentage
 
-    constructor(address _lendingTokenAddress, address _PoolRegistryStoreAddress)
-    {
-        lendingToken = IERC20(_lendingTokenAddress);
+    constructor(address _PoolRegistryStoreAddress) {
         poolRegistryStoreAddress = _PoolRegistryStoreAddress;
         emit PoolRegistryContractDeployed();
     }
@@ -2798,7 +2781,6 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
             "Pool.createPool: Invalid Input!"
         );
         require(_creator != address(0x0), "Pool.createPool: Invalid address!");
-        lendingToken.safeTransferFrom(msg.sender, address(this), _amount);
         uint256 poolId = PoolRegistryStore(poolRegistryStoreAddress)
             ._createPool(
                 _amount,
@@ -2813,12 +2795,9 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
     }
 
     // Get pools that can cover principal
-    function getValidPools(uint256 principal)
-        external
-        view
-        onlyOwner
-        returns (uint256[] memory)
-    {
+    function getValidPools(
+        uint256 principal
+    ) external view onlyOwner returns (uint256[] memory) {
         require(principal > 0, "Pool.getValidPools: Invalid input!");
         uint256[] memory validPools;
         uint256 count = 0;
@@ -2853,10 +2832,13 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
             borrower != address(0x0),
             "Pool.requestLoan: Invalid borrower!"
         );
-        lendingToken.safeTransfer(msg.sender, principal);
+
+        (bool success, ) = address(msg.sender).call{value: principal}("");
+        require(success, "Failed to transfer amount");
+
         uint256 loanId = PoolRegistryStore(poolRegistryStoreAddress)
             ._createLoan(poolId, borrower, principal);
-        emit LoanCreated(loanId,poolId, borrower, principal);
+        emit LoanCreated(loanId, poolId, borrower, principal);
         return loanId;
     }
 
@@ -2873,7 +2855,6 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
             amount == Loan.principal,
             "Pool.repayLoanFull: Invalid amount!"
         );
-        lendingToken.safeTransferFrom(msg.sender, address(this), amount);
         uint256 loanRepaymentId = PoolRegistryStore(poolRegistryStoreAddress)
             ._createLoanRepayment(loanId, amount, LoanRepaymentType.FULL);
         PoolRegistryStore(poolRegistryStoreAddress)._updateLoan(
@@ -2900,7 +2881,6 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
             amount == _calcLoanPartPayment(loanId, poolId),
             "Pool.repayLoanPart: Invalid amount!"
         );
-        lendingToken.safeTransferFrom(msg.sender, address(this), amount);
 
         uint256 loanRepaymentId = PoolRegistryStore(poolRegistryStoreAddress)
             ._createLoanRepayment(loanId, amount, LoanRepaymentType.PART);
@@ -2931,7 +2911,6 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
             "Pool.fundPool: Pool is closed!"
         );
         require(amount > 0, "Pool: Invalid input!");
-        lendingToken.safeTransferFrom(msg.sender, address(this), amount);
         PoolRegistryStore(poolRegistryStoreAddress)._updatePool(
             poolId,
             Pool.amount + amount,
@@ -2959,18 +2938,20 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
             Pool.creator,
             PoolStatus.CLOSED
         );
-        lendingToken.safeTransfer(reciever, amountWithdrawable);
+
+        (bool success, ) = address(reciever).call{value: amountWithdrawable}(
+            ""
+        );
+        require(success, "Failed to transfer amount");
     }
 
     // INTERNAL FUNCTIONS
 
     // (pool balance - total lent out) + total repaid
     // This can be used to check exact amount pool creator can currently withdraw
-    function _getPoolBalanceWithInterest(uint256 poolId)
-        public
-        view
-        returns (uint256)
-    {
+    function _getPoolBalanceWithInterest(
+        uint256 poolId
+    ) public view returns (uint256) {
         uint256 totalAmountLoaned;
         uint256 totalAmountRepaid;
         for (uint256 i = 0; i < countLoansInPool[poolId]; i++) {
@@ -3007,11 +2988,10 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
             .amount - totalAmountLoaned);
     }
 
-    function _calcLoanPartPayment(uint256 loanId, uint256 poolId)
-        public
-        view
-        returns (uint256)
-    {
+    function _calcLoanPartPayment(
+        uint256 loanId,
+        uint256 poolId
+    ) public view returns (uint256) {
         LoanDetails memory Loan = PoolRegistryStore(poolRegistryStoreAddress)
             .getLoanByPoolID(poolId, loanId);
 
@@ -3045,11 +3025,10 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
         return partPayment + interest + defaultFeeAmount;
     }
 
-    function _calcLoanFullPayment(uint256 loanId, uint256 poolId)
-        public
-        view
-        returns (uint256)
-    {
+    function _calcLoanFullPayment(
+        uint256 loanId,
+        uint256 poolId
+    ) public view returns (uint256) {
         LoanDetails memory Loan = PoolRegistryStore(poolRegistryStoreAddress)
             .getLoanByPoolID(poolId, loanId);
 
@@ -3065,20 +3044,17 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
         }
     }
 
-    function _fullPaymentWithDefault(LoanDetails memory Loan)
-        internal
-        pure
-        returns (uint256)
-    {
+    function _fullPaymentWithDefault(
+        LoanDetails memory Loan
+    ) internal pure returns (uint256) {
         uint256 defaultFeeAmount = (Loan.principal * DEFAULT_FEE_PERCENT) / 100;
         return Loan.principal + defaultFeeAmount;
     }
 
-    function _isLoanInDefault(uint256 loanId, uint256 poolId)
-        public
-        view
-        returns (bool)
-    {
+    function _isLoanInDefault(
+        uint256 loanId,
+        uint256 poolId
+    ) public view returns (bool) {
         PoolDetails memory Pool = PoolRegistryStore(poolRegistryStoreAddress)
             .getPoolByID(poolId);
         // check if loanId is valid
@@ -3118,17 +3094,22 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
         return true;
     }
 
-    function _completeRefundBorrower(address borrowerAddress, uint256 amount)
-        public
-    {
-        lendingToken.safeTransfer(borrowerAddress, amount);
+    function _completeRefundBorrower(
+        address borrowerAddress,
+        uint256 amount
+    ) public {
+        (bool success, ) = address(borrowerAddress).call{value: amount}("");
+        require(success, "Failed to refund borrower");
     }
+
+
+    receive() external payable virtual {}
 }
 
 
 // File @openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol@v4.7.3
 
-
+// SPDX-License-Identifier: MIT
 // OpenZeppelin Contracts v4.4.1 (token/ERC721/extensions/IERC721Metadata.sol)
 
 pragma solidity ^0.8.0;
@@ -3157,7 +3138,7 @@ interface IERC721Metadata is IERC721 {
 
 // File @openzeppelin/contracts/utils/Strings.sol@v4.7.3
 
-
+// SPDX-License-Identifier: MIT
 // OpenZeppelin Contracts (last updated v4.7.0) (utils/Strings.sol)
 
 pragma solidity ^0.8.0;
@@ -3236,7 +3217,7 @@ library Strings {
 
 // File @openzeppelin/contracts/utils/introspection/ERC165.sol@v4.7.3
 
-
+// SPDX-License-Identifier: MIT
 // OpenZeppelin Contracts v4.4.1 (utils/introspection/ERC165.sol)
 
 pragma solidity ^0.8.0;
@@ -3267,7 +3248,7 @@ abstract contract ERC165 is IERC165 {
 
 // File @openzeppelin/contracts/token/ERC721/ERC721.sol@v4.7.3
 
-
+// SPDX-License-Identifier: MIT
 // OpenZeppelin Contracts (last updated v4.7.0) (token/ERC721/ERC721.sol)
 
 pragma solidity ^0.8.0;
@@ -3723,7 +3704,7 @@ contract ERC721 is Context, ERC165, IERC721, IERC721Metadata {
 
 // File contracts/Escrow.sol
 
-
+// SPDX-License-Identifier: MIT
 pragma solidity 0.8.1;
 
 
@@ -3804,14 +3785,11 @@ contract Escrow is IERC721Receiver {
 
 // File contracts/store/QredosStore.sol
 
-
+// SPDX-License-Identifier: MIT
 pragma solidity 0.8.1;
 
 
-
-
 contract QredosStore is Ownable, Schema, Events {
-    using SafeERC20 for IERC20;
 
     // duration - APPROX. 90 days (3 months)
     // APR - 10% * 3 months (APR is 30)
@@ -3933,7 +3911,7 @@ contract QredosStore is Ownable, Schema, Events {
 
 // File contracts/Qredos.sol
 
-
+// SPDX-License-Identifier: MIT
 pragma solidity 0.8.1;
 
 
@@ -3943,13 +3921,8 @@ pragma solidity 0.8.1;
 
 
 
-
 contract Qredos is Ownable, Schema, Events, IERC721Receiver {
-    using SafeERC20 for IERC20;
-
-    address public paymentTokenAddress;
-    address public lendingPoolAddress;
-
+    address payable public lendingPoolAddress;
     address public qredosStoreAddress;
     bool public isPaused;
 
@@ -3959,16 +3932,14 @@ contract Qredos is Ownable, Schema, Events, IERC721Receiver {
     }
 
     constructor(
-        address _paymentTokenAddress,
-        address _lendingPoolAddress,
+        address payable _lendingPoolAddress,
         address _QredosStoreAddress
     ) {
-        paymentTokenAddress = _paymentTokenAddress;
         lendingPoolAddress = _lendingPoolAddress;
 
         qredosStoreAddress = _QredosStoreAddress;
 
-        emit QredosContractDeployed(_paymentTokenAddress, _lendingPoolAddress);
+        emit QredosContractDeployed(_lendingPoolAddress);
     }
 
     function onERC721Received(
@@ -3986,7 +3957,7 @@ contract Qredos is Ownable, Schema, Events, IERC721Receiver {
         uint256 downPaymentAmount,
         uint256 principal,
         uint256 poolId
-    ) external whenNotPaused {
+    ) external payable whenNotPaused {
         require(
             tokenAddress != address(0x0),
             "Qredos.purchaseNFT: address is zero address!"
@@ -4004,11 +3975,8 @@ contract Qredos is Ownable, Schema, Events, IERC721Receiver {
                 principal,
             "Qredos.purchaseNFT: Selected pool can't fund purchase!"
         );
-        IERC20(paymentTokenAddress).safeTransferFrom(
-            msg.sender,
-            address(this),
-            downPaymentAmount
-        );
+        require(msg.value >= downPaymentAmount, "Incorrect ether amount!");
+
         uint256 loanId = IPoolRegistry(lendingPoolAddress).requestLoan(
             principal,
             poolId,
@@ -4016,13 +3984,16 @@ contract Qredos is Ownable, Schema, Events, IERC721Receiver {
         );
 
         require(
-            IERC20(paymentTokenAddress).balanceOf(address(this)) >=
-                (downPaymentAmount + principal),
+            address(this).balance >= (downPaymentAmount + principal),
             "Qredos.purchaseNFT: Insufficient funds!"
         );
-        /* 
-            move funds to secure vault.
-         */
+
+        // move funds to QREDOS EOA address.
+        (bool success, ) = address(owner()).call{
+            value: (downPaymentAmount + principal)
+        }("");
+        require(success, "Failed ether transfer to EOA");
+
         uint256 purchaseId = QredosStore(qredosStoreAddress)._createPurchase(
             msg.sender,
             loanId,
@@ -4077,22 +4048,21 @@ contract Qredos is Ownable, Schema, Events, IERC721Receiver {
         uint256 purchaseId,
         LoanRepaymentType repaymentType,
         uint256 poolId
-    ) external whenNotPaused {
+    ) external payable whenNotPaused {
         PurchaseDetails memory purchase = QredosStore(qredosStoreAddress)
             .getPurchaseByID(msg.sender, purchaseId);
         // check if payment has been paid previously
         if (repaymentType == LoanRepaymentType.FULL) {
             uint256 fullPayment = PoolRegistry(lendingPoolAddress)
                 ._calcLoanFullPayment(purchase.loanId, poolId);
-            IERC20(paymentTokenAddress).safeTransferFrom(
-                msg.sender,
-                address(this),
-                fullPayment
-            );
-            IERC20(paymentTokenAddress).approve(
-                lendingPoolAddress,
-                fullPayment
-            );
+
+            require(msg.value >= fullPayment, "Insufficient ether sent!");
+
+            (bool success, ) = address(lendingPoolAddress).call{
+                value: fullPayment
+            }("");
+            require(success, "Failed ether transfer to pool");
+
             uint256 loanRepaymentId = IPoolRegistry(lendingPoolAddress)
                 .repayLoanFull(purchase.loanId, fullPayment, poolId);
             emit LoanRepaid(
@@ -4104,15 +4074,14 @@ contract Qredos is Ownable, Schema, Events, IERC721Receiver {
         } else if (repaymentType == LoanRepaymentType.PART) {
             uint256 partPayment = PoolRegistry(lendingPoolAddress)
                 ._calcLoanPartPayment(purchase.loanId, poolId);
-            IERC20(paymentTokenAddress).safeTransferFrom(
-                msg.sender,
-                address(this),
-                partPayment
-            );
-            IERC20(paymentTokenAddress).approve(
-                lendingPoolAddress,
-                partPayment
-            );
+
+            require(msg.value >= partPayment, "Insufficient ether sent!");
+
+            (bool success, ) = address(lendingPoolAddress).call{
+                value: partPayment
+            }("");
+            require(success, "Failed ether transfer to pool");
+
             uint256 loanRepaymentId = IPoolRegistry(lendingPoolAddress)
                 .repayLoanPart(purchase.loanId, partPayment, poolId);
             emit LoanRepaid(
@@ -4162,20 +4131,22 @@ contract Qredos is Ownable, Schema, Events, IERC721Receiver {
     function completeLiquidation(
         uint256 liquidationId,
         address borrowerAddress
-    ) external whenNotPaused {
+    ) external payable whenNotPaused {
         LiquidationDetails memory liquidation = QredosStore(qredosStoreAddress)
             .getLiquidationByID(liquidationId);
         PurchaseDetails memory purchase = QredosStore(qredosStoreAddress)
             .getPurchaseByID(borrowerAddress, liquidation.purchaseId);
-        IERC20(paymentTokenAddress).safeTransferFrom(
-            msg.sender,
-            address(this),
-            liquidation.discountAmount
+
+        require(
+            msg.value >= liquidation.discountAmount,
+            "Insufficient ether sent!"
         );
-        IERC20(paymentTokenAddress).safeTransfer(
-            lendingPoolAddress,
-            liquidation.discountAmount
-        );
+
+        (bool success, ) = address(lendingPoolAddress).call{
+            value: liquidation.discountAmount
+        }("");
+        require(success, "Failed ether transfer to pool");
+
         require(
             Escrow(purchase.escrowAddress).claim(msg.sender),
             "Qredos: liquidation reverted!"
@@ -4232,13 +4203,14 @@ contract Qredos is Ownable, Schema, Events, IERC721Receiver {
         uint256 _durationInSecs,
         uint16 _durationInMonths,
         address _creator
-    ) external whenNotPaused {
-        IERC20(paymentTokenAddress).safeTransferFrom(
-            msg.sender,
-            address(this),
-            _amount
-        );
-        IERC20(paymentTokenAddress).approve(lendingPoolAddress, _amount);
+    ) external payable whenNotPaused {
+        require(msg.value >= _amount, "Insufficient ether sent!");
+
+        (bool success, bytes memory data) = lendingPoolAddress.call{
+            value: _amount
+        }("");
+        require(success, "Failed ether transfer to pool");
+
         PoolRegistry(lendingPoolAddress).createPool(
             _amount,
             _paymentCycle,
@@ -4249,13 +4221,15 @@ contract Qredos is Ownable, Schema, Events, IERC721Receiver {
         );
     }
 
-    function fundPool(uint256 poolId, uint256 amount) external whenNotPaused {
-        IERC20(paymentTokenAddress).safeTransferFrom(
-            msg.sender,
-            address(this),
-            amount
-        );
-        IERC20(paymentTokenAddress).approve(lendingPoolAddress, amount);
+    function fundPool(
+        uint256 poolId,
+        uint256 amount
+    ) external payable whenNotPaused {
+        require(msg.value >= amount, "Insufficient ether sent!");
+
+        (bool success, ) = address(lendingPoolAddress).call{value: amount}("");
+        require(success, "Failed ether transfer to pool");
+
         PoolRegistry(lendingPoolAddress).fundPool(poolId, amount);
     }
 
@@ -4286,10 +4260,10 @@ contract Qredos is Ownable, Schema, Events, IERC721Receiver {
     }
 
     function forwardAllFunds() external onlyOwner {
-        IERC20(paymentTokenAddress).transfer(
-            owner(),
-            IERC20(paymentTokenAddress).balanceOf(address(this))
+        (bool success, ) = address(owner()).call{value: address(this).balance}(
+            ""
         );
+        require(success, "Failed ether transfer");
     }
 
     function _calcDownPayment(
@@ -4376,4 +4350,6 @@ contract Qredos is Ownable, Schema, Events, IERC721Receiver {
     function getPoolBalance(uint256 poolId) external view returns (uint256) {
         return PoolRegistry(lendingPoolAddress)._getPoolBalance(poolId);
     }
+
+    receive() external payable virtual {}
 }

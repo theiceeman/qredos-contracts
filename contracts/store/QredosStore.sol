@@ -3,12 +3,9 @@ pragma solidity 0.8.1;
 import "../models/Schema.sol";
 import "../models/Events.sol";
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract QredosStore is Ownable, Schema, Events {
-    using SafeERC20 for IERC20;
 
     // duration - APPROX. 90 days (3 months)
     // APR - 10% * 3 months (APR is 30)

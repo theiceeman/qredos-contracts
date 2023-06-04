@@ -8,11 +8,12 @@ describe("Qredos", function () {
   let POOL_ID;
 
   before(async () => {
-    [deployer, buyer, lender, liquidator] = await ethers.getSigners();
+    provider = ethers.provider;
+    [deployer, buyer, lender, liquidator, tester] = await ethers.getSigners();
 
     // UTILITIES
-    weth = await ethers.getContractFactory("ERC20Token");
-    WETH = await weth.deploy("Wrapped Ether", "WETH");
+    // weth = await ethers.getContractFactory("ERC20Token");
+    // WETH = await weth.deploy("Wrapped Ether", "WETH");
 
     bayc = await ethers.getContractFactory("ERC721Token");
     BAYC = await bayc.deploy();
@@ -26,16 +27,17 @@ describe("Qredos", function () {
     // Pool
     PoolRegistry = await ethers.getContractFactory("PoolRegistry");
     poolRegistry = await PoolRegistry.deploy(
-      WETH.address,
+      // WETH.address,
       poolRegistryStore.address
     );
     // Oracle
     Qredos = await ethers.getContractFactory("Qredos");
     qredos = await Qredos.deploy(
-      WETH.address,
+      // WETH.address,
       poolRegistry.address,
       qredosStore.address
     );
+
 
     // Transfer pool ownership to oracle
     await poolRegistry.transferOwnership(qredos.address);
@@ -45,9 +47,14 @@ describe("Qredos", function () {
     await qredosStore.transferOwnership(qredos.address);
 
     // Fund test accounts with accepted payment token
-    await WETH.transfer(buyer.address, parseEther("50000"));
-    await WETH.transfer(lender.address, parseEther("50000"));
-    await WETH.transfer(liquidator.address, parseEther("50000"));
+    // await WETH.transfer(buyer.address, parseEther("50000"));
+    // await WETH.transfer(lender.address, parseEther("50000"));
+    // await WETH.transfer(liquidator.address, parseEther("50000"));
+
+    await tester.sendTransaction({
+      to: lender.address,
+      value: parseEther("9999"),
+    });
 
     // CREATE POOL
     let amount = parseEther("10000");
@@ -56,7 +63,7 @@ describe("Qredos", function () {
     let durationInSecs = 5260000;
     let durationInMonths = 2;
 
-    await WETH.connect(lender).approve(qredos.address, amount);
+    // await WETH.connect(lender).approve(qredos.address, amount);
     let txn = await qredos
       .connect(lender)
       .createPool(
@@ -65,7 +72,8 @@ describe("Qredos", function () {
         APR,
         durationInSecs,
         durationInMonths,
-        lender.address
+        lender.address,
+        { value: amount }
       );
     let reciept = await txn.wait();
     let PoolCreatedEvent = reciept.events?.filter((x) => {
@@ -93,21 +101,23 @@ describe("Qredos", function () {
         tokenId
       );
       await qredos.connect(buyer).completeNFTPurchase(PURCHASE_ID);
-      let poolBalanceBefore = await WETH.balanceOf(poolRegistry.address);
+      // let poolBalanceBefore = await WETH.balanceOf(poolRegistry.address);
+      let poolBalanceBefore = await provider.getBalance(poolRegistry.address);
 
       //   make first part payment
       let PART = BigNumber.from("1");
-      await WETH.connect(buyer).approve(qredos.address, principal);
-      await qredos.connect(buyer).repayLoan(PURCHASE_ID, PART, POOL_ID);
+      // await WETH.connect(buyer).approve(qredos.address, principal);
+      await qredos.connect(buyer).repayLoan(PURCHASE_ID, PART, POOL_ID, { value: principal });
 
       //   Before the two months period ends
       await increaseTimeTo((await latestTime()) + duration.weeks(7));
 
       //   Make second part payment
-      await WETH.connect(buyer).approve(qredos.address, principal);
-      await qredos.connect(buyer).repayLoan(PURCHASE_ID, PART, POOL_ID);
+      // await WETH.connect(buyer).approve(qredos.address, principal);
+      await qredos.connect(buyer).repayLoan(PURCHASE_ID, PART, POOL_ID, { value: principal });
 
-      let poolBalanceAfter = await WETH.balanceOf(poolRegistry.address);
+      // let poolBalanceAfter = await WETH.balanceOf(poolRegistry.address);
+      let poolBalanceAfter = await provider.getBalance(poolRegistry.address);
 
       expect(
         formatEther(poolBalanceAfter) - formatEther(poolBalanceBefore)
@@ -135,16 +145,18 @@ describe("Qredos", function () {
         tokenId
       );
       await qredos.connect(buyer).completeNFTPurchase(PURCHASE_ID);
-      let poolBalanceBefore = await WETH.balanceOf(poolRegistry.address);
+      // let poolBalanceBefore = await WETH.balanceOf(poolRegistry.address);
+      let poolBalanceBefore = await provider.getBalance(poolRegistry.address);
 
       // one month period ends
       await increaseTimeTo((await latestTime()) + duration.weeks(5));
 
       let PART = BigNumber.from("1");
-      await WETH.connect(buyer).approve(qredos.address, principal);
-      await qredos.connect(buyer).repayLoan(PURCHASE_ID, PART, POOL_ID);
+      // await WETH.connect(buyer).approve(qredos.address, principal);
+      await qredos.connect(buyer).repayLoan(PURCHASE_ID, PART, POOL_ID, { value: principal });
 
-      let poolBalanceAfter = await WETH.balanceOf(poolRegistry.address);
+      // let poolBalanceAfter = await WETH.balanceOf(poolRegistry.address);
+      let poolBalanceAfter = await provider.getBalance(poolRegistry.address);
 
       expect(
         formatEther(poolBalanceAfter) - formatEther(poolBalanceBefore)
@@ -170,25 +182,27 @@ describe("Qredos", function () {
         tokenId
       );
       await qredos.connect(buyer).completeNFTPurchase(PURCHASE_ID);
-      let poolBalanceBefore = await WETH.balanceOf(poolRegistry.address);
+      // let poolBalanceBefore = await WETH.balanceOf(poolRegistry.address);
+      let poolBalanceBefore = await provider.getBalance(poolRegistry.address);
 
       // one month period ends
       await increaseTimeTo((await latestTime()) + duration.weeks(5));
 
       let liquidationAmount = parseEther("1150");
       let currentNftPrice = parseEther("2000");
-      await WETH.connect(liquidator).approve(qredos.address, liquidationAmount);
+      // await WETH.connect(liquidator).approve(qredos.address, liquidationAmount);
       let LIQUIDATION_ID = await startLiquidation(
         liquidationAmount,
         PURCHASE_ID,
-        currentNftPrice,buyer.address
+        currentNftPrice, buyer.address
       );
       // complete liquidation
       await qredos
         .connect(liquidator)
-        .completeLiquidation(LIQUIDATION_ID, buyer.address);
+        .completeLiquidation(LIQUIDATION_ID, buyer.address, { value: liquidationAmount });
 
-      let poolBalanceAfter = await WETH.balanceOf(poolRegistry.address);
+      // let poolBalanceAfter = await WETH.balanceOf(poolRegistry.address);
+      let poolBalanceAfter = await provider.getBalance(poolRegistry.address);
 
       expect(
         formatEther(poolBalanceAfter) - formatEther(poolBalanceBefore)
@@ -219,34 +233,39 @@ describe("Qredos", function () {
 
       // first part payment
       let PART = BigNumber.from("1");
-      await WETH.connect(buyer).approve(qredos.address, principal);
-      await qredos.connect(buyer).repayLoan(PURCHASE_ID, PART, POOL_ID);
+      // await WETH.connect(buyer).approve(qredos.address, principal);
+      await qredos.connect(buyer).repayLoan(PURCHASE_ID, PART, POOL_ID, { value: principal });
 
       // forward time to second month
       await increaseTimeTo((await latestTime()) + duration.weeks(9));
 
-      let poolBalanceBefore = await WETH.balanceOf(poolRegistry.address);
+      // let poolBalanceBefore = await WETH.balanceOf(poolRegistry.address);
+      let poolBalanceBefore = await provider.getBalance(poolRegistry.address);
 
       // LIQUIDATE NFT
       let liquidationAmount = parseEther("2050");
       let currentNftPrice = parseEther("2000");
-      await WETH.connect(liquidator).approve(qredos.address, liquidationAmount);
+      // await WETH.connect(liquidator).approve(qredos.address, liquidationAmount);
       let LIQUIDATION_ID = await startLiquidation(
         liquidationAmount,
         PURCHASE_ID,
         currentNftPrice,
-        buyer.address
+        buyer.address,
+        { value: liquidationAmount }
       );
       // complete liquidation
       await qredos
         .connect(liquidator)
-        .completeLiquidation(LIQUIDATION_ID, buyer.address);
+        .completeLiquidation(LIQUIDATION_ID, buyer.address,{value:liquidationAmount});
 
-      let poolBalanceAfter = await WETH.balanceOf(poolRegistry.address);
+      // let poolBalanceAfter = await WETH.balanceOf(poolRegistry.address);
+      let poolBalanceAfter = await provider.getBalance(poolRegistry.address);
 
-      let buyerBalanceBefore = await WETH.balanceOf(buyer.address);
+      // let buyerBalanceBefore = await WETH.balanceOf(buyer.address);
+      let buyerBalanceBefore = await provider.getBalance(buyer.address);
       await qredos.connect(buyer).refundBorrower(PURCHASE_ID, LIQUIDATION_ID);
-      let buyerBalanceAfter = await WETH.balanceOf(buyer.address);
+      // let buyerBalanceAfter = await WETH.balanceOf(buyer.address);
+      let buyerBalanceAfter = await provider.getBalance(buyer.address);
 
       // we get 2050 weth when liquidation is completed
       expect(
@@ -280,12 +299,13 @@ describe("Qredos", function () {
       );
       await qredos.connect(buyer).completeNFTPurchase(PURCHASE_ID);
 
-      let poolBalanceBefore = await WETH.balanceOf(poolRegistry.address);
+      // let poolBalanceBefore = await WETH.balanceOf(poolRegistry.address);
+      let poolBalanceBefore = await provider.getBalance(poolRegistry.address);
 
       // LIQUIDATE NFT
       let liquidationAmount = parseEther("2050");
       let currentNftPrice = parseEther("1800");
-      await WETH.connect(liquidator).approve(qredos.address, liquidationAmount);
+      // await WETH.connect(liquidator).approve(qredos.address, liquidationAmount);
       let LIQUIDATION_ID = await startLiquidation(
         liquidationAmount,
         PURCHASE_ID,
@@ -295,14 +315,17 @@ describe("Qredos", function () {
       // complete liquidation
       await qredos
         .connect(liquidator)
-        .completeLiquidation(LIQUIDATION_ID, buyer.address);
+        .completeLiquidation(LIQUIDATION_ID, buyer.address,{value:liquidationAmount});
 
-      let poolBalanceAfter = await WETH.balanceOf(poolRegistry.address);
+      // let poolBalanceAfter = await WETH.balanceOf(poolRegistry.address);
+      let poolBalanceAfter = await provider.getBalance(poolRegistry.address);
 
-      let buyerBalanceBefore = await WETH.balanceOf(buyer.address);
+      // let buyerBalanceBefore = await WETH.balanceOf(buyer.address);
+      let buyerBalanceBefore = await provider.getBalance(buyer.address);
 
       await qredos.connect(buyer).refundBorrower(PURCHASE_ID, LIQUIDATION_ID);
-      let buyerBalanceAfter = await WETH.balanceOf(buyer.address);
+      // let buyerBalanceAfter = await WETH.balanceOf(buyer.address);
+      let buyerBalanceAfter = await provider.getBalance(buyer.address);
 
       // we get 2050 weth when liquidation is completed
       expect(
@@ -317,10 +340,10 @@ describe("Qredos", function () {
 });
 
 async function purchaseNFT(downPaymentAmount, principal, tokenId, POOL_ID) {
-  await WETH.connect(buyer).approve(qredos.address, downPaymentAmount);
+  // await WETH.connect(buyer).approve(qredos.address, downPaymentAmount);
   let purchaseNftTxn = await qredos
     .connect(buyer)
-    .purchaseNFT(BAYC.address, tokenId, downPaymentAmount, principal, POOL_ID);
+    .purchaseNFT(BAYC.address, tokenId, downPaymentAmount, principal, POOL_ID, { value: downPaymentAmount });
   let purchaseNFTResult = await purchaseNftTxn.wait();
   let PurchaseCreatedEvent = purchaseNFTResult.events?.filter((x) => {
     return x.event == "PurchaseCreated";

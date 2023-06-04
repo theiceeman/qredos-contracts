@@ -34,7 +34,7 @@
     "compile": "npx hardhat compile",
     "test": "hardhat test --network hardhat",
     "run": "npx hardhat run --network hardhat scripts/run.js",
-    "test:userflow": "hardhat test --network localhost ./test/userFlow.js",
+    "test:userflow": "hardhat test --network hardhat ./test/userFlow.js",
     "test:test": "hardhat test --network hardhat ./test/Test.js",
     "deploy:localhost": "npx hardhat run --network localhost scripts/run.js",
     "flatten": "npx hardhat flatten contracts/Foo.sol > Flattened.sol"
