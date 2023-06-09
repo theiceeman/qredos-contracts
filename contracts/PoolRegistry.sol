@@ -4,8 +4,8 @@ import "./models/Schema.sol";
 import "./models/Events.sol";
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-
 import "./store/PoolRegistryStore.sol";
+import "hardhat/console.sol";
 
 contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
     address public poolRegistryStoreAddress;
@@ -227,14 +227,10 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
     // (pool balance - total lent out)
     // This can be used to check exact amount that can be withdrawn from a pool
     function _getPoolBalance(uint256 poolId) public view returns (uint256) {
-        uint256 totalAmountLoaned;
-        uint256 loansInPool = PoolRegistryStore(poolRegistryStoreAddress)
-            .getCountLoansInPool(poolId);
-        for (uint256 i = 0; i < loansInPool; i++) {
-            totalAmountLoaned += PoolRegistryStore(poolRegistryStoreAddress)
-                .getLoanByPoolID(poolId, i)
-                .principal;
-        }
+
+        uint256 totalAmountLoaned = PoolRegistryStore(poolRegistryStoreAddress)
+            .totalAmountLoanedByPool(poolId);
+
         return (PoolRegistryStore(poolRegistryStoreAddress)
             .getPoolByID(poolId)
             .amount - totalAmountLoaned);
@@ -353,7 +349,6 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
         (bool success, ) = address(borrowerAddress).call{value: amount}("");
         require(success, "Failed to refund borrower");
     }
-
 
     receive() external payable virtual {}
 }

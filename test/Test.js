@@ -593,6 +593,18 @@ describe("Qredos", function () {
     });
   });
 
+  describe("purchaseNft", async () => {
+
+    it("getPoolBalance in purchaseNft shouldnt fail, when you create a new pool & and purchase from that pool", async () => {
+      let POOL_ID_2 = await createPool('200')
+      let amt = parseEther("50");
+      let tokenId = 2;
+      await purchaseNFT(amt, amt, tokenId, POOL_ID_2)
+      await purchaseNFT(amt, amt, tokenId, POOL_ID_2)
+    })
+
+  })
+
   describe("whenNotPaused", async function () {
     it("should revert when paused", async () => {
       let downPaymentAmount = parseEther("100000");
@@ -614,3 +626,32 @@ describe("Qredos", function () {
     });
   });
 });
+
+
+async function createPool(_amount) {
+
+  // create new pool for this test case
+  let amount = parseEther(_amount); // 50000
+  // await WETH.connect(lender).approve(qredos.address, amount);
+  let createPoolTxn = await qredos
+    .connect(lender)
+    .createPool(amount, 3, 30, 7890000, 3, lender.address, { value: amount });
+  let createPoolResult = await createPoolTxn.wait();
+  let PoolCreatedEvent = createPoolResult.events?.filter((x) => {
+    return x.event == "PoolCreated";
+  });
+  return PoolCreatedEvent[0].args.poolId;
+}
+
+
+async function purchaseNFT(downPaymentAmount, principal, tokenId, POOL_ID) {
+  // await WETH.connect(buyer).approve(qredos.address, downPaymentAmount);
+  let purchaseNftTxn = await qredos
+    .connect(buyer)
+    .purchaseNFT(BAYC.address, tokenId, downPaymentAmount, principal, POOL_ID, { value: downPaymentAmount });
+  let purchaseNFTResult = await purchaseNftTxn.wait();
+  let PurchaseCreatedEvent = purchaseNFTResult.events?.filter((x) => {
+    return x.event == "PurchaseCreated";
+  });
+  return PurchaseCreatedEvent[0].args.purchaseId;
+}

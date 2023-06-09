@@ -84,7 +84,7 @@ struct LoanRepaymentDetails {
 
 // File contracts/models/Events.sol
 
-// SPDX-License-Identifier: MIT
+
 pragma solidity 0.8.1;
 
 abstract contract Events is Schema {
@@ -141,7 +141,7 @@ abstract contract Events is Schema {
 
 // File @openzeppelin/contracts/utils/Context.sol@v4.7.3
 
-// SPDX-License-Identifier: MIT
+
 // OpenZeppelin Contracts v4.4.1 (utils/Context.sol)
 
 pragma solidity ^0.8.0;
@@ -169,7 +169,7 @@ abstract contract Context {
 
 // File @openzeppelin/contracts/access/Ownable.sol@v4.7.3
 
-// SPDX-License-Identifier: MIT
+
 // OpenZeppelin Contracts (last updated v4.7.0) (access/Ownable.sol)
 
 pragma solidity ^0.8.0;
@@ -254,7 +254,7 @@ abstract contract Ownable is Context {
 
 // File @openzeppelin/contracts/token/ERC20/IERC20.sol@v4.7.3
 
-// SPDX-License-Identifier: MIT
+
 // OpenZeppelin Contracts (last updated v4.6.0) (token/ERC20/IERC20.sol)
 
 pragma solidity ^0.8.0;
@@ -340,7 +340,7 @@ interface IERC20 {
 
 // File @openzeppelin/contracts/token/ERC20/extensions/draft-IERC20Permit.sol@v4.7.3
 
-// SPDX-License-Identifier: MIT
+
 // OpenZeppelin Contracts v4.4.1 (token/ERC20/extensions/draft-IERC20Permit.sol)
 
 pragma solidity ^0.8.0;
@@ -404,7 +404,7 @@ interface IERC20Permit {
 
 // File @openzeppelin/contracts/utils/Address.sol@v4.7.3
 
-// SPDX-License-Identifier: MIT
+
 // OpenZeppelin Contracts (last updated v4.7.0) (utils/Address.sol)
 
 pragma solidity ^0.8.1;
@@ -630,7 +630,7 @@ library Address {
 
 // File @openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol@v4.7.3
 
-// SPDX-License-Identifier: MIT
+
 // OpenZeppelin Contracts (last updated v4.7.0) (token/ERC20/utils/SafeERC20.sol)
 
 pragma solidity ^0.8.0;
@@ -748,7 +748,7 @@ library SafeERC20 {
 
 // File hardhat/console.sol@v2.10.1
 
-// SPDX-License-Identifier: MIT
+
 pragma solidity >= 0.4.22 <0.9.0;
 
 library console {
@@ -2284,7 +2284,7 @@ library console {
 
 // File contracts/store/PoolRegistryStore.sol
 
-// SPDX-License-Identifier: MIT
+
 pragma solidity 0.8.1;
 
 
@@ -2308,32 +2308,31 @@ contract PoolRegistryStore is Ownable, Schema {
     uint256 public totalLoanRepayments = 0;
     // (loanId => noOfLoanRepayments)
     mapping(uint256 => uint256) public countLoanRepaymentsForLoan;
+    // (poolId > totalAmountLoaned)
+    mapping(uint256 => uint256) public totalAmountLoanedByPool;
 
-
-    function _getLoanRepaymentByLoanID(uint256 loanId, uint256 loanRepaymentiD)
-        external
-        view
-        returns (LoanRepaymentDetails memory)
-    {
+    function _getLoanRepaymentByLoanID(
+        uint256 loanId,
+        uint256 loanRepaymentiD
+    ) external view returns (LoanRepaymentDetails memory) {
         return LoanRepayment[loanId][loanRepaymentiD];
     }
 
-    function getLoanRepaymentByLoanID(uint256 loanId, uint256 loanRepaymentiD)
-        external
-        view
-        returns (LoanRepaymentDetails memory)
-    {
+    function getLoanRepaymentByLoanID(
+        uint256 loanId,
+        uint256 loanRepaymentiD
+    ) external view returns (LoanRepaymentDetails memory) {
         require(
             LoanRepayment[loanId][loanRepaymentiD].isExists,
             "getLoanRepaymentByLoanID: No such record"
         );
         return LoanRepayment[loanId][loanRepaymentiD];
     }
-    function getLoanByPoolID(uint256 poolId, uint256 loanId)
-        external
-        view
-        returns (LoanDetails memory)
-    {
+
+    function getLoanByPoolID(
+        uint256 poolId,
+        uint256 loanId
+    ) external view returns (LoanDetails memory) {
         require(
             Loans[poolId][loanId].isExists,
             "getLoanByPoolID: No such record"
@@ -2341,20 +2340,16 @@ contract PoolRegistryStore is Ownable, Schema {
         return Loans[poolId][loanId];
     }
 
-    function getPoolByID(uint256 poolId)
-        external
-        view
-        returns (PoolDetails memory)
-    {
+    function getPoolByID(
+        uint256 poolId
+    ) external view returns (PoolDetails memory) {
         require(Pools[poolId].isExists, "getPoolByID: No such record");
         return Pools[poolId];
     }
 
-    function getCountLoansInPool(uint256 poolId)
-        external
-        view
-        returns (uint256)
-    {
+    function getCountLoansInPool(
+        uint256 poolId
+    ) external view returns (uint256) {
         require(Pools[poolId].isExists, "getCountLoansInPool: No such record");
         return countLoansInPool[poolId];
     }
@@ -2434,6 +2429,7 @@ contract PoolRegistryStore is Ownable, Schema {
         );
         ++totalLoans;
         countLoansInPool[poolId] = ++countLoansInPool[poolId];
+        totalAmountLoanedByPool[poolId] = ++totalAmountLoanedByPool[poolId];
         return loanId;
     }
 
@@ -2474,11 +2470,9 @@ contract PoolRegistryStore is Ownable, Schema {
         return loanRepayment;
     }
 
-    function _hasPendingLoanRepayment(uint256 poolId)
-        internal
-        view
-        returns (bool)
-    {
+    function _hasPendingLoanRepayment(
+        uint256 poolId
+    ) internal view returns (bool) {
         require(Pools[poolId].isExists, "Pool: Invalid pool Id!");
         // loan [i] -> loanId
         for (uint256 i = 0; i < countLoansInPool[poolId]; i++) {
@@ -2498,8 +2492,10 @@ contract PoolRegistryStore is Ownable, Schema {
 
 // File contracts/PoolRegistry.sol
 
-// SPDX-License-Identifier: MIT
+
 pragma solidity 0.8.1;
+
+
 
 
 contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
@@ -2722,14 +2718,10 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
     // (pool balance - total lent out)
     // This can be used to check exact amount that can be withdrawn from a pool
     function _getPoolBalance(uint256 poolId) public view returns (uint256) {
-        uint256 totalAmountLoaned;
-        uint256 loansInPool = PoolRegistryStore(poolRegistryStoreAddress)
-            .getCountLoansInPool(poolId);
-        for (uint256 i = 0; i < loansInPool; i++) {
-            totalAmountLoaned += PoolRegistryStore(poolRegistryStoreAddress)
-                .getLoanByPoolID(poolId, i)
-                .principal;
-        }
+
+        uint256 totalAmountLoaned = PoolRegistryStore(poolRegistryStoreAddress)
+            .totalAmountLoanedByPool(poolId);
+
         return (PoolRegistryStore(poolRegistryStoreAddress)
             .getPoolByID(poolId)
             .amount - totalAmountLoaned);
@@ -2848,7 +2840,6 @@ contract PoolRegistry is Ownable, Schema, Events, PoolRegistryStore {
         (bool success, ) = address(borrowerAddress).call{value: amount}("");
         require(success, "Failed to refund borrower");
     }
-
 
     receive() external payable virtual {}
 }

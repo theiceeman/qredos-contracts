@@ -25,32 +25,31 @@ contract PoolRegistryStore is Ownable, Schema {
     uint256 public totalLoanRepayments = 0;
     // (loanId => noOfLoanRepayments)
     mapping(uint256 => uint256) public countLoanRepaymentsForLoan;
+    // (poolId > totalAmountLoaned)
+    mapping(uint256 => uint256) public totalAmountLoanedByPool;
 
-
-    function _getLoanRepaymentByLoanID(uint256 loanId, uint256 loanRepaymentiD)
-        external
-        view
-        returns (LoanRepaymentDetails memory)
-    {
+    function _getLoanRepaymentByLoanID(
+        uint256 loanId,
+        uint256 loanRepaymentiD
+    ) external view returns (LoanRepaymentDetails memory) {
         return LoanRepayment[loanId][loanRepaymentiD];
     }
 
-    function getLoanRepaymentByLoanID(uint256 loanId, uint256 loanRepaymentiD)
-        external
-        view
-        returns (LoanRepaymentDetails memory)
-    {
+    function getLoanRepaymentByLoanID(
+        uint256 loanId,
+        uint256 loanRepaymentiD
+    ) external view returns (LoanRepaymentDetails memory) {
         require(
             LoanRepayment[loanId][loanRepaymentiD].isExists,
             "getLoanRepaymentByLoanID: No such record"
         );
         return LoanRepayment[loanId][loanRepaymentiD];
     }
-    function getLoanByPoolID(uint256 poolId, uint256 loanId)
-        external
-        view
-        returns (LoanDetails memory)
-    {
+
+    function getLoanByPoolID(
+        uint256 poolId,
+        uint256 loanId
+    ) external view returns (LoanDetails memory) {
         require(
             Loans[poolId][loanId].isExists,
             "getLoanByPoolID: No such record"
@@ -58,20 +57,16 @@ contract PoolRegistryStore is Ownable, Schema {
         return Loans[poolId][loanId];
     }
 
-    function getPoolByID(uint256 poolId)
-        external
-        view
-        returns (PoolDetails memory)
-    {
+    function getPoolByID(
+        uint256 poolId
+    ) external view returns (PoolDetails memory) {
         require(Pools[poolId].isExists, "getPoolByID: No such record");
         return Pools[poolId];
     }
 
-    function getCountLoansInPool(uint256 poolId)
-        external
-        view
-        returns (uint256)
-    {
+    function getCountLoansInPool(
+        uint256 poolId
+    ) external view returns (uint256) {
         require(Pools[poolId].isExists, "getCountLoansInPool: No such record");
         return countLoansInPool[poolId];
     }
@@ -151,6 +146,7 @@ contract PoolRegistryStore is Ownable, Schema {
         );
         ++totalLoans;
         countLoansInPool[poolId] = ++countLoansInPool[poolId];
+        totalAmountLoanedByPool[poolId] = ++totalAmountLoanedByPool[poolId];
         return loanId;
     }
 
@@ -191,11 +187,9 @@ contract PoolRegistryStore is Ownable, Schema {
         return loanRepayment;
     }
 
-    function _hasPendingLoanRepayment(uint256 poolId)
-        internal
-        view
-        returns (bool)
-    {
+    function _hasPendingLoanRepayment(
+        uint256 poolId
+    ) internal view returns (bool) {
         require(Pools[poolId].isExists, "Pool: Invalid pool Id!");
         // loan [i] -> loanId
         for (uint256 i = 0; i < countLoansInPool[poolId]; i++) {
